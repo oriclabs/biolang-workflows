@@ -1,0 +1,36 @@
+# plugins.bl — Using BioLang modules and plugins
+# Tutorial: https://lang.bio/docs/tutorials/plugins.html
+#
+# Run with: bl run examples/tutorials/plugins.bl
+#
+# A published plugin is installed first and imported by name:
+#   bl add motif_finder
+#   import "motif_finder"
+#
+# The import below resolves to motif_finder.bl next to this file, so the
+# tutorial runs in a fresh checkout. Everything after it is identical either
+# way — an installed plugin and a local module expose the same interface.
+
+import "motif_finder.bl" as motifs
+
+# Find motifs shared by a set of promoter sequences
+let seqs = ["ATCGATCGATCG", "GATCGATCGATC", "CGATCGATCGAT"]
+
+let found = motifs.find_motifs(seqs, 6, 10, 0.3, "enumerate")
+
+print("=== Discovered Motifs ===")
+for m in found |> take(5) {
+  print(f"  {m.motif}  seen {m.count}x")
+}
+
+# Show a per-position consensus for an aligned set
+let alignment = ["ATCG", "ATCG", "ATCG", "AACG"]
+print("\n=== Motif Logo ===")
+print(motifs.motif_logo(alignment, "results/top_motif_logo.svg", "ascii"))
+
+# Scan the same sequences for a known consensus
+let hits = motifs.scan_motif(seqs, "ATCGAT", 0.8)
+print(f"\nWindows matching ATCGAT at >=80%: {len(hits)}")
+for h in hits |> take(5) {
+  print(f"  {h.window}  score={round(h.score, 2)}")
+}

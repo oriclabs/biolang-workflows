@@ -1,0 +1,161 @@
+# Bio-Specific SVG Plots (21 plot types)
+# Publication-quality bioinformatics visualizations
+
+# ── Manhattan plot (GWAS) ──
+let gwas = table([
+    {chrom: "chr1", pos: 5000000, pvalue: 0.05},
+    {chrom: "chr1", pos: 10000000, pvalue: 0.0001},
+    {chrom: "chr2", pos: 3000000, pvalue: 0.5},
+    {chrom: "chr3", pos: 7000000, pvalue: 0.00001}
+])
+let mp = manhattan({data: gwas, title: "GWAS Manhattan Plot", format: "svg"})
+println("Manhattan SVG:", len(mp), "chars")
+# save_svg(mp, "results/manhattan.svg")
+
+# ── QQ plot ──
+let pvalues = [0.001, 0.01, 0.05, 0.1, 0.2, 0.5, 0.8, 0.95]
+let qq = qq_plot({data: pvalues, title: "QQ Plot", format: "svg"})
+println("QQ plot SVG:", len(qq))
+# save_svg(qq, "results/qq_plot.svg")
+
+# ── Violin plot ──
+let groups = table([
+    {group: "Control", value: 5.2}, {group: "Control", value: 4.8},
+    {group: "Control", value: 5.5}, {group: "Control", value: 5.0},
+    {group: "Treated", value: 8.1}, {group: "Treated", value: 7.5},
+    {group: "Treated", value: 8.8}, {group: "Treated", value: 7.9}
+])
+let vn = violin({data: groups, title: "Expression by Group", format: "svg"})
+println("Violin SVG:", len(vn))
+# save_svg(vn, "results/violin.svg")
+
+# ── Density plot ──
+let values = [1.0, 1.2, 1.5, 2.0, 2.3, 2.5, 3.0, 3.5, 4.0, 5.0]
+let dp = density({data: values, title: "Density", format: "svg"})
+println("Density SVG:", len(dp))
+# save_svg(dp, "results/density.svg")
+
+# ── Kaplan-Meier survival ──
+let survival = table([
+    {time: 10, event: 1, group: "Drug"},
+    {time: 20, event: 0, group: "Drug"},
+    {time: 30, event: 1, group: "Drug"},
+    {time: 5, event: 1, group: "Placebo"},
+    {time: 15, event: 1, group: "Placebo"},
+    {time: 25, event: 1, group: "Placebo"}
+])
+let km = kaplan_meier({data: survival, title: "Survival Analysis", format: "svg"})
+println("Kaplan-Meier SVG:", len(km))
+# save_svg(km, "results/kaplan_meier.svg")
+
+# ── PCA plot ──
+let pca_data = table([
+    {pc1: 1.0, pc2: 2.0, group: "A"},
+    {pc1: 1.5, pc2: 2.5, group: "A"},
+    {pc1: 5.0, pc2: 4.0, group: "B"},
+    {pc1: 5.5, pc2: 4.5, group: "B"}
+])
+let pp = pca_plot({data: pca_data, title: "PCA", format: "svg"})
+println("PCA plot SVG:", len(pp))
+# save_svg(pp, "results/pca.svg")
+
+# ── ROC curve ──
+let roc_data = table([
+    {fpr: 0.0, tpr: 0.0}, {fpr: 0.1, tpr: 0.4},
+    {fpr: 0.2, tpr: 0.6}, {fpr: 0.4, tpr: 0.8},
+    {fpr: 0.6, tpr: 0.9}, {fpr: 1.0, tpr: 1.0}
+])
+let rc = roc_curve({data: roc_data, title: "ROC Curve", auc: 0.85, format: "svg"})
+println("ROC curve SVG:", len(rc))
+# save_svg(rc, "results/roc_curve.svg")
+
+# ── Forest plot (meta-analysis) ──
+let studies = table([
+    {label: "Study A", estimate: 0.5, lower: 0.2, upper: 0.8},
+    {label: "Study B", estimate: 0.3, lower: 0.1, upper: 0.5},
+    {label: "Study C", estimate: 0.7, lower: 0.4, upper: 1.0}
+])
+let fp = forest_plot({data: studies, title: "Meta-Analysis", format: "svg"})
+println("Forest plot SVG:", len(fp))
+# save_svg(fp, "results/forest_plot.svg")
+
+# ── Venn diagram ──
+let venn_data = {
+    A: ["gene1", "gene2", "gene3", "gene4"],
+    B: ["gene2", "gene3", "gene5", "gene6"],
+    C: ["gene3", "gene5", "gene7"]
+}
+let vd = venn({data: venn_data, title: "Gene Set Overlap", format: "svg"})
+println("Venn SVG:", len(vd))
+# save_svg(vd, "results/venn.svg")
+
+# ── UpSet plot ──
+let up = upset({data: venn_data, title: "Intersection Size", format: "svg"})
+println("UpSet SVG:", len(up))
+# save_svg(up, "results/upset.svg")
+
+# ── Sequence logo ──
+let motif = ["ATGCATGC", "ATGGATGC", "ATGCATGA", "ATGCATGC", "ATGCATGC"]
+let sl = sequence_logo({data: motif, title: "Binding Motif", format: "svg"})
+println("Sequence logo SVG:", len(sl))
+# save_svg(sl, "results/sequence_logo.svg")
+
+# ── Phylogenetic tree ──
+let newick = "((A:0.1,B:0.2):0.3,(C:0.4,D:0.5):0.6);"
+let pt = phylo_tree({data: newick, title: "Phylogeny", format: "svg"})
+println("Phylo tree SVG:", len(pt))
+# save_svg(pt, "results/phylo_tree.svg")
+
+# ── Lollipop plot (mutation map) ──
+let mutations = table([
+    {position: 100, label: "R100H", height: 50},
+    {position: 250, label: "V250M", height: 30},
+    {position: 400, label: "G400D", height: 80}
+])
+let lp = lollipop({data: mutations, title: "TP53 Mutations", length: 500, format: "svg"})
+println("Lollipop SVG:", len(lp))
+# save_svg(lp, "results/lollipop.svg")
+
+# ── Circos plot ──
+let segments = table([
+    {chrom: "chr1", end: 10000}, {chrom: "chr2", end: 8000},
+    {chrom: "chr3", end: 12000}, {chrom: "chr5", end: 9000}
+])
+let links = table([
+    {source_chr: "chr1", source_pos: 1000, target_chr: "chr3", target_pos: 5000},
+    {source_chr: "chr2", source_pos: 3000, target_chr: "chr5", target_pos: 7000}
+])
+let cp = circos({data: {segments: segments, links: links}, title: "Structural Variants", format: "svg"})
+println("Circos SVG:", len(cp))
+# save_svg(cp, "results/circos.svg")
+
+# ── Oncoprint ──
+let onco_data = table([
+    {gene: "TP53", sample: "S1", alteration: "Mutation"},
+    {gene: "TP53", sample: "S2", alteration: "Mutation"},
+    {gene: "EGFR", sample: "S1", alteration: "Amplification"},
+    {gene: "KRAS", sample: "S3", alteration: "Mutation"}
+])
+let op = oncoprint({data: onco_data, title: "Oncoprint", format: "svg"})
+println("Oncoprint SVG:", len(op))
+# save_svg(op, "results/oncoprint.svg")
+
+# ── Clustered heatmap ──
+let expr = matrix([
+    [5.0, 2.0, 8.0],
+    [6.0, 1.0, 9.0],
+    [2.0, 7.0, 3.0],
+    [1.0, 8.0, 2.0]
+])
+let ch = clustered_heatmap({data: expr, title: "Gene Expression", format: "svg"})
+println("Clustered heatmap SVG:", len(ch))
+# save_svg(ch, "results/clustered_heatmap.svg")
+
+# ── Other plots (data-dependent) ──
+# ideogram({data: ..., title: "Chromosome Ideogram", format: "svg"})
+# rainfall({data: ..., title: "Mutation Rainfall", format: "svg"})
+# cnv_plot({data: ..., title: "Copy Number", format: "svg"})
+# hic_map({data: ..., title: "Hi-C Contact Map", format: "svg"})
+# sashimi({data: ..., title: "Sashimi Plot", format: "svg"})
+
+println("\nAll 21 bio plot types demonstrated!")

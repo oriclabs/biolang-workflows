@@ -1,0 +1,28 @@
+[repository]
+schema = 1
+license = "MIT"
+generated_results_committed = false
+
+[biolang]
+minimum_version = "1.4.0"
+tested_version = "1.4.0"
+source_repository = "https://github.com/oriclabs/biolang"
+source_commit = "8d0db026f21ae178e700a1fbaeb8318efca5dbc3"
+
+[packages.singlecell]
+minimum_version = "0.2.0"
+tested_version = "0.2.0"
+
+[reproducibility]
+default_seed = 1448145
+default_gpu = "off"
+record_input_sha256 = true
+record_runtime_versions = true
+
+[validation]
+external_oracles_are_optional = true
+external_oracles_run_out_of_process = true
+generated_directory = "validation-results"
+sctransform_version = "0.4.3"
+glmGamPoi_version = "1.22.0"
+default_sctransform_method = "glmGamPoi_offset"

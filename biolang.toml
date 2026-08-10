@@ -1,0 +1,11 @@
+[package]
+name = "biolang-workflows"
+version = "0.1.0"
+description = "Applied books, courses, notebooks, and validation workflows for BioLang"
+authors = ["BioLang Contributors"]
+license = "MIT"
+
+[dependencies]
+# Runtime packages are installed explicitly from a released package repository
+# or a BioLang source checkout. A machine-specific local path is not committed.
+

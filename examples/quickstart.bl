@@ -1,0 +1,57 @@
+# BioLang Quickstart — run from the project root:
+#   bl examples/quickstart.bl
+#
+# All sample data is in examples/sample-data/
+
+# ── FASTA: read and analyze contigs ──
+let contigs = fasta("examples/sample-data/contigs.fa", "table")
+println("Contigs loaded: " + str(nrow(contigs)))
+contigs |> select("id") |> print()
+
+# ── FASTQ: quality check ──
+let reads = fastq("examples/sample-data/reads.fq", "table")
+println("\nReads loaded: " + str(nrow(reads)))
+
+# Filter high-quality reads (mean quality > 30).
+# The `quality` column holds the raw Phred string, so decode it before averaging.
+let hq = reads |> filter(|r| mean(parse_qual(r.quality)) > 30)
+println("High-quality reads: " + str(nrow(hq)))
+
+# ── VCF: variant analysis ──
+let variants = vcf("examples/sample-data/calls.vcf", "table")
+println("\nVariants loaded: " + str(len(variants)))
+
+# Filter PASS variants with quality > 50 — use |> into for left-to-right binding
+variants |> filter(|v| v.filter == "PASS" and v.quality > 50) |> into pass_vars
+println("PASS variants (qual > 50): " + str(len(pass_vars)))
+
+# ── BED: genomic regions ──
+let promoters = bed("examples/sample-data/promoters.bed", "table")
+println("\nPromoter regions: " + str(nrow(promoters)))
+
+# ── CSV: gene expression ──
+let counts = read_csv("examples/sample-data/gene_counts.csv")
+println("\nGenes in expression matrix: " + str(nrow(counts)))
+
+# Show top 5 genes by control mean expression
+counts
+  |> mutate("ctrl_mean", |row| mean([row.CTRL_1, row.CTRL_2, row.CTRL_3]))
+  |> sort_by(|row| row.ctrl_mean)
+  |> reverse()
+  |> take(5)
+  |> select("gene_name", "ctrl_mean")
+  |> print()
+
+# ── GFF: gene annotations ──
+let features = gff("examples/sample-data/annotations.gff", "table")
+let genes = features |> filter(|f| f.type == "gene")
+println("\nAnnotated genes: " + str(nrow(genes)))
+
+# ── DNA sequence operations ──
+let seq = dna"ATCGATCGATCGTAGCTAGCTAGCTAGCTGATCGATCG"
+println("\nSequence: " + str(seq))
+println("Length: " + str(len(seq)))
+println("GC content: " + str(gc_content(seq)))
+println("Reverse complement: " + str(reverse_complement(seq)))
+
+println("\n--- Quickstart complete! ---")

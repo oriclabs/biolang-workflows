@@ -1,0 +1,28 @@
+[book]
+title = "Practical Biostatistics in 30 Days"
+authors = ["Bioras"]
+language = "en"
+description = "A calm, practical introduction to statistics for biological data with BioLang"
+src = "src"
+
+[build]
+build-dir = "../../../website/books/biostatistics"
+
+[output.html]
+default-theme = "light"
+preferred-dark-theme = "ayu"
+git-repository-url = "https://github.com/oriclabs/biolang-workflows"
+additional-css = ["theme/print.css"]
+additional-js = ["theme/toolbar-buttons.js"]
+
+[output.html.search]
+enable = true
+
+[output.html.playground]
+editable = false
+
+[output.pdf]
+optional = true
+title = "Practical Biostatistics in 30 Days"
+authors = "Bioras"
+output-file = "practical-biostatistics-in-30-days.pdf"

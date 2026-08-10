@@ -1,0 +1,34 @@
+# BioLang and workflow outputs
+validation-results/
+benchmark-results/
+singlecell-results/
+output/
+outputs/
+result/
+results/
+
+# Generated books and sites
+site/
+public/
+website/
+
+# Downloaded data and local environments
+data/raw/
+datasets/cache/
+.validation-r-library/
+.venv*/
+renv/library/
+
+# Language/tool caches
+target/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.Rhistory
+.RData
+
+# Editors and operating systems
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

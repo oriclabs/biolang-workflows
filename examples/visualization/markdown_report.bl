@@ -1,0 +1,81 @@
+# markdown_report.bl — Generate a Markdown analysis report with BioLang
+#
+# Markdown is just text, so the formatting helpers are ordinary functions
+# rather than builtins. Defining them here keeps the report readable and shows
+# how to build a small domain vocabulary of your own.
+
+# ── Markdown helpers ────────────────────────────────────────────
+
+fn md_header(text, level) {
+    repeat("#", level) ++ " " ++ text
+}
+
+fn md_bold(text) { "**" ++ text ++ "**" }
+fn md_italic(text) { "*" ++ text ++ "*" }
+fn md_code(text) { "`" ++ text ++ "`" }
+fn md_quote(text) { "> " ++ text }
+fn md_link(text, url) { "[" ++ text ++ "](" ++ url ++ ")" }
+
+fn md_list(items) {
+    items |> map(|item| "- " ++ item) |> join("\n")
+}
+
+# A leading header row, then the `---` separator Markdown needs, then the body.
+fn md_table(rows) {
+    let row_line = |cells| "| " ++ join(cells, " | ") ++ " |"
+    let header = rows[0]
+    let divider = header |> map(|_| "---")
+    # drop(rows, 1), not tail(rows): tail() returns the *last* n rows and
+    # defaults to all of them, so it would repeat the header.
+    let body = drop(rows, 1) |> map(row_line)
+    join([row_line(header), row_line(divider)] + body, "\n")
+}
+
+# ── Header and Introduction ─────────────────────────────────────
+
+md_header("Sample QC Report", 1) |> println()
+md_header("Experiment: RNA-Seq Mouse Cortex", 2) |> println()
+
+println(md_bold("Date:") ++ " 2026-03-06")
+println(md_bold("Analyst:") ++ " " ++ md_italic("Automated Pipeline v2.1"))
+println("")
+
+md_quote("All samples passed minimum quality thresholds.") |> println()
+println("")
+
+# ── Summary Statistics Table ────────────────────────────────────
+
+md_header("Read Statistics", 2) |> println()
+
+let stats_table = [
+    ["Sample",    "Total Reads", "Mapped %", "Mean Q", "Duplication %"],
+    ["Cortex_R1", "42,310,881",  "96.3",     "35.2",  "12.4"],
+    ["Cortex_R2", "38,904,512",  "95.8",     "34.9",  "11.7"],
+    ["Cortex_R3", "44,112,009",  "97.1",     "36.0",  "13.1"]
+]
+stats_table |> md_table() |> println()
+println("")
+
+# ── Methods ─────────────────────────────────────────────────────
+
+md_header("Methods", 2) |> println()
+
+let steps = [
+    "Adapter trimming with " ++ md_code("fastp --qualified_quality_phred 20"),
+    "Alignment to GRCm39 using " ++ md_code("STAR 2.7.11b"),
+    "Duplicate marking with " ++ md_code("picard MarkDuplicates"),
+    "Quantification with " ++ md_code("featureCounts")
+]
+steps |> md_list() |> println()
+println("")
+
+# ── Links and References ────────────────────────────────────────
+
+md_header("References", 2) |> println()
+
+md_link("GRCm39 Reference", "https://www.ncbi.nlm.nih.gov/datasets/genome/GCF_000001635.27/") |> println()
+md_link("STAR Aligner", "https://github.com/alexdobin/STAR") |> println()
+println("")
+
+md_header("Pipeline Code", 3) |> println()
+md_code("somer submit rnaseq --input cortex_R*.fq.gz --genome GRCm39") |> println()
