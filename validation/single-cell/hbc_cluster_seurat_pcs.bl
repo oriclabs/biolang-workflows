@@ -1,0 +1,45 @@
+# Diagnostic isolation test: keep Seurat's integrated PCs fixed and run only
+# BioLang's SNN construction plus Louvain clustering. This is not a workflow a
+# user should mix into an analysis; it locates downstream implementation drift.
+
+import "singlecell" as sc
+
+let input_dir = env("BIOLANG_HBC_SEURAT_PC_INPUT")
+let output_dir = env("BIOLANG_HBC_OUTPUT")
+if input_dir == nil or output_dir == nil {
+    error("set BIOLANG_HBC_SEURAT_PC_INPUT and BIOLANG_HBC_OUTPUT")
+}
+
+let started = timestamp_ms()
+let metadata = read_csv(input_dir + "/cells.csv")
+let scores = read_f64_matrix(input_dir + "/matrix.f64")
+let shape = dim(scores)
+if shape[0] != nrow(metadata) or shape[1] != 40 {
+    error("Seurat PC matrix/metadata shape mismatch")
+}
+
+let object = {
+    n_cells: shape[0],
+    pca_scores: scores,
+    integrated_embedding: scores,
+    graphs: ({}),
+    reductions: ({})
+}
+let graph = sc.neighbors(object, 20, true, 40)
+let clustered = sc.cluster_louvain(graph, 20, 0.8)
+let clusters = clustered.clusters
+write_csv(table({
+    sample: col(metadata, "sample"),
+    barcode: col(metadata, "barcode"),
+    cluster: clusters
+}), output_dir + "/cells.csv")
+write_csv(table([{
+    cells: shape[0],
+    pcs: shape[1],
+    neighbors: 20,
+    resolution: 0.8,
+    clusters: len(unique(clusters)),
+    elapsed_seconds: float(timestamp_ms() - started) / 1000.0
+}]), output_dir + "/summary.csv")
+println("HBC_SEURAT_PC_CLUSTER_PROBE_OK clusters=" +
+        str(len(unique(clusters))))

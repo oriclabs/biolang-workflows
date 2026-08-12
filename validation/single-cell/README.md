@@ -123,3 +123,20 @@ independent pass/fail gates. CPU is the reproducibility default; pass
 The calibrated oracle requires `glmGamPoi_offset` by default and stops if R
 silently falls back to `nb_offset`. Use `--oracle-method nb_offset` only for a
 separately named comparison of that backend.
+
+## Full HBC biological validation
+
+`hbc_biological_external_sct.bl` exercises the process boundary used by the
+optional GPL SCTransform executable, then runs the complete downstream analysis
+in BioLang. `compare_hbc_biology.py` checks broad PBMC identities and the
+control-to-stimulated response; `compare_hbc_results.py` retains the stricter
+numeric cluster, feature, neighbour, UMAP, and marker comparisons.
+
+To determine where partition drift enters, use
+`prepare_hbc_seurat_pcs.py`, `hbc_cluster_seurat_pcs.bl`, and
+`compare_hbc_cluster_probe.py`. That diagnostic fixes Seurat's integrated PCs
+and tests only BioLang's SNN/Louvain stages. It is an isolation experiment, not
+a mixed-engine analysis workflow.
+
+The latest measured real-data results, limitations, resource figures, and the
+licensing boundary are recorded in [HBC_SEURAT_VALIDATION.md](HBC_SEURAT_VALIDATION.md).
