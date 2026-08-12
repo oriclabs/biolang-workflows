@@ -226,16 +226,18 @@ def main() -> int:
         )
     od_absolute = [abs(value) for value in od_differences]
 
-    # How much of the theta discrepancy survives into the residuals.
+    # Diagnostic only: how much of the theta discrepancy survives into the
+    # residuals.
     #
     # Theta enters the residual only through the variance, r = (y - mu) /
     # sqrt(mu + mu^2/theta), so d(log r)/d(log theta) = mu / (2 * (theta + mu)).
     # That is bounded by 1/2 and small wherever mu << theta, which is most of a
     # UMI matrix - so a theta bias should arrive at the residuals heavily
-    # attenuated. Reporting the attenuation measured per gene turns a failing
-    # theta gate from an unexplained defect into a bounded, characterised
-    # deviation, and the dose-response check confirms the two are actually
-    # linked rather than coincidentally sized.
+    # attenuated. The ratio is useful context but is not a valid acceptance
+    # criterion when theta error approaches zero: division by numerical noise
+    # makes a more accurate implementation appear worse. Acceptance below is
+    # therefore based on absolute, scale-sensitive parameter and residual
+    # errors; this ratio remains in the artifact for diagnosis only.
     theta_attenuation_pairs: list[tuple[float, float]] = []
     for gene in sorted(residual_keys_by_gene):
         if gene not in oracle_genes or gene not in biolang_genes:
@@ -580,9 +582,6 @@ def main() -> int:
             metrics["feature_rank_spearman"] is not None
             and metrics["feature_rank_spearman"] >= 0.95
         ),
-        # A theta bias is tolerable only if it is demonstrably damped before it
-        # reaches the residuals. Requiring attenuation below 0.25 keeps that a
-        # measured claim rather than an assumption.
         # The smoothed quantity itself, on its own scale. The original-scale
         # theta gates remain visible and deliberately failing where calibration
         # differs; this additional gate measures the quantity v2 actually fits.
@@ -592,9 +591,9 @@ def main() -> int:
             metrics["od_factor_absolute_difference_median"] is not None
             and metrics["od_factor_absolute_difference_median"] <= 0.01
         ),
-        "theta_bias_attenuated_below_0_25": (
-            metrics["theta_to_residual_attenuation"] is not None
-            and metrics["theta_to_residual_attenuation"] <= 0.25
+        "per_gene_residual_median_relative_error_at_most_0_02": (
+            metrics["per_gene_residual_relative_error_median"] is not None
+            and metrics["per_gene_residual_relative_error_median"] <= 0.02
         ),
         "residual_probe_covers_at_least_0_95_of_top_n": (
             metrics["joined_probe_genes"] / max(1, metrics["top_feature_n"]) >= 0.95
