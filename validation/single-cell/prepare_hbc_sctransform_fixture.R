@@ -66,6 +66,10 @@ filter_cells <- function(input) {
   novelty <- log10(genes) / log10(umi)
   keep <- umi >= 500 & genes >= 250 & novelty > 0.80 & mito_fraction < 0.20
   input$counts <- counts[, keep, drop = FALSE]
+  # Match the Seurat course flow: mitoRatio is calculated on the original
+  # assay before the merged gene filter, then retained as cell metadata.
+  # Recomputing it after removing genes is a different regression covariate.
+  input$mito_fraction <- mito_fraction[keep]
   input
 }
 
@@ -77,6 +81,14 @@ write_mex <- function(input, keep_genes, directory) {
   writeLines(vapply(fields, function(x) paste(x, collapse = "\t"), character(1L)),
              file.path(directory, "features.tsv"))
   writeLines(colnames(counts), file.path(directory, "barcodes.tsv"))
+  write.csv(
+    data.frame(
+      barcode = colnames(counts),
+      mitochondrial_fraction = as.numeric(input$mito_fraction)
+    ),
+    file.path(directory, "cell-covariates.csv"),
+    row.names = FALSE, quote = FALSE
+  )
 }
 
 ctrl <- filter_cells(read_mex(ctrl_dir))

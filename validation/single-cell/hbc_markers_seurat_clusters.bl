@@ -1,0 +1,33 @@
+# Isolation probe: hold the original Seurat HBC clusters fixed and run only
+# BioLang RNA LogNormalize plus positive marker discovery.
+
+import "singlecell" as sc
+
+let ctrl_input = env("BIOLANG_HBC_CTRL_INPUT")
+let stim_input = env("BIOLANG_HBC_STIM_INPUT")
+let label_path = env("BIOLANG_HBC_SEURAT_LABELS")
+let output_dir = env("BIOLANG_HBC_OUTPUT")
+if ctrl_input == nil or stim_input == nil or label_path == nil or output_dir == nil {
+    error("set BIOLANG_HBC_CTRL_INPUT, BIOLANG_HBC_STIM_INPUT, " +
+          "BIOLANG_HBC_SEURAT_LABELS, and BIOLANG_HBC_OUTPUT")
+}
+
+let started = timestamp_ms()
+let ctrl = sc.load(ctrl_input)
+let stim = sc.load(stim_input)
+let merged = sc.merge(ctrl, stim, 0, 1)
+let labels = read_csv(label_path)
+if nrow(labels) != merged.n_cells or col(labels, "barcode") != merged.barcodes {
+    error("fixed Seurat labels are not ordered on the merged BioLang cells")
+}
+let clusters = col(labels, "cluster") |> map(|value| int(value))
+let normalized = sc.normalize({... merged, clusters: clusters}, 10000.0)
+let markers = sc.find_all_markers(normalized, 0.1, 0.25, true)
+write_csv(table(markers), output_dir + "/markers.csv")
+write_csv(table([{
+    cells: merged.n_cells,
+    clusters: len(unique(clusters)),
+    positive_marker_rows: len(markers),
+    elapsed_seconds: float(timestamp_ms() - started) / 1000.0
+}]), output_dir + "/summary.csv")
+println("HBC_FIXED_CLUSTER_MARKERS_OK rows=" + str(len(markers)))

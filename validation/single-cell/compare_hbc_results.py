@@ -13,10 +13,32 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from pynndescent import NNDescent
 from scipy.optimize import linear_sum_assignment
 from sklearn.metrics import adjusted_mutual_info_score, adjusted_rand_score
 from sklearn.neighbors import NearestNeighbors
+
+# Some relocatable Python installations do not expose a cache locator for
+# site-packages source files.  PyNNDescent requests Numba's on-disk cache at
+# import time, so that packaging detail otherwise prevents comparison before a
+# single metric is calculated.  Disabling only the persistent cache preserves
+# the compiled algorithm and its deterministic seed.
+import numba
+
+
+def _without_disk_cache(decorator):
+    def wrapped(*args, **kwargs):
+        kwargs["cache"] = False
+        return decorator(*args, **kwargs)
+
+    return wrapped
+
+
+numba.jit = _without_disk_cache(numba.jit)
+numba.njit = _without_disk_cache(numba.njit)
+numba.vectorize = _without_disk_cache(numba.vectorize)
+numba.guvectorize = _without_disk_cache(numba.guvectorize)
+
+from pynndescent import NNDescent
 
 
 def parse_args() -> argparse.Namespace:
@@ -24,6 +46,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("seurat_dir", type=Path)
     parser.add_argument("biolang_dir", type=Path)
     parser.add_argument("output_json", type=Path)
+    parser.add_argument(
+        "--seurat-markers",
+        type=Path,
+        help="corrected marker CSV when it is stored outside seurat_dir",
+    )
     return parser.parse_args()
 
 
@@ -165,7 +192,7 @@ def main() -> None:
         "umap_neighbor_method": "exact-kd-tree",
     }
 
-    seurat_marker_path = args.seurat_dir / "markers.csv"
+    seurat_marker_path = args.seurat_markers or args.seurat_dir / "markers.csv"
     biolang_marker_path = args.biolang_dir / "markers.csv"
     if seurat_marker_path.exists() and biolang_marker_path.exists():
         seurat_markers = pd.read_csv(seurat_marker_path)

@@ -1,0 +1,27 @@
+# Validation-only crossover: run BioLang's Annoy mutual-neighbour search on a
+# fixed embedding produced by either Seurat or BioLang.
+
+let input_dir = env("BIOLANG_HBC_EMBEDDING_INPUT")
+let output_dir = env("BIOLANG_HBC_EMBEDDING_OUTPUT")
+if input_dir == nil or output_dir == nil {
+    error("set BIOLANG_HBC_EMBEDDING_INPUT and BIOLANG_HBC_EMBEDDING_OUTPUT")
+}
+
+let left = read_f64_matrix(input_dir + "/left.f64")
+let right = read_f64_matrix(input_dir + "/right.f64")
+let started = timestamp_ms()
+let result = sc_anchor_candidates(left, right, {
+    k_anchor: 5, k_neighbours: 30
+})
+let elapsed = float(timestamp_ms() - started) / 1000.0
+write_csv(table(result.candidate_anchors), output_dir + "/candidate-anchors.csv")
+write_csv(table([{
+    left_cells: result.left_count,
+    right_cells: result.right_count,
+    dimensions: result.dims,
+    candidates: len(result.candidate_anchors),
+    compute_backend: result.compute_method,
+    elapsed_seconds: elapsed
+}]), output_dir + "/summary.csv")
+println("HBC_EMBEDDING_CANDIDATES_BIOLANG_OK candidates=" +
+        str(len(result.candidate_anchors)) + " seconds=" + str(round(elapsed, 3)))

@@ -1,0 +1,34 @@
+# Export BioLang kNN/SNN/Louvain results over fixed Seurat integrated PCs.
+
+let input_dir = env("BIOLANG_HBC_SEURAT_PC_INPUT")
+let output_dir = env("BIOLANG_HBC_OUTPUT")
+if input_dir == nil or output_dir == nil {
+    error("set BIOLANG_HBC_SEURAT_PC_INPUT and BIOLANG_HBC_OUTPUT")
+}
+let metadata = read_csv(input_dir + "/cells.csv")
+let scores = read_f64_matrix(input_dir + "/matrix.f64")
+if dim(scores)[0] != nrow(metadata) or dim(scores)[1] < 40 {
+    error("PC matrix/metadata shape mismatch")
+}
+let scores40 = select_cols(scores, range(0, 40))
+let started = timestamp_ms()
+let knn = knn_graph(scores40, 19)
+let snn = snn_graph(scores40, 20)
+let clusters = louvain_graph(snn, dim(scores40)[0], 0.8, 10)
+write_csv(table(knn), output_dir + "/knn.csv")
+write_csv(table(snn), output_dir + "/snn.csv")
+write_csv(table({
+    sample: col(metadata, "sample"),
+    barcode: col(metadata, "barcode"),
+    cluster: clusters
+}), output_dir + "/cells.csv")
+write_csv(table([{
+    cells: dim(scores40)[0],
+    pcs: dim(scores40)[1],
+    k: 20,
+    knn_rows: len(knn),
+    snn_edges: len(snn),
+    clusters: len(unique(clusters)),
+    elapsed_seconds: float(timestamp_ms() - started) / 1000.0
+}]), output_dir + "/summary.csv")
+println("HBC_GRAPH_BIOLANG_OK clusters=" + str(len(unique(clusters))))

@@ -1,0 +1,94 @@
+# Stage-isolation probe: use Seurat's complete scored anchor set and exact
+# weighting PCA with the neutral HBC residual matrices, then let BioLang run
+# integration correction, PCA, SNN construction, and Louvain clustering.
+
+let input_dir = env("BIOLANG_HBC_CCA_INPUT")
+let anchor_dir = env("BIOLANG_HBC_CCA_ORACLE")
+let integration_dir = env("BIOLANG_HBC_INTEGRATION_ORACLE")
+let metadata_dir = env("BIOLANG_HBC_SEURAT_PC_INPUT")
+let output_dir = env("BIOLANG_HBC_OUTPUT")
+if input_dir == nil or anchor_dir == nil or integration_dir == nil or
+   metadata_dir == nil or output_dir == nil {
+    error("set BIOLANG_HBC_CCA_INPUT, BIOLANG_HBC_CCA_ORACLE, " +
+          "BIOLANG_HBC_INTEGRATION_ORACLE, BIOLANG_HBC_SEURAT_PC_INPUT, " +
+          "and BIOLANG_HBC_OUTPUT")
+}
+
+fn swapped_pcs(input, anchor_input, integration_input, pca_solver, pca_initial) {
+    let left = read_f64_matrix(input + "/ctrl.f64")
+    let right = read_f64_matrix(input + "/stim.f64")
+    let anchor_table = read_csv(anchor_input + "/anchors.csv")
+    let anchor_left = col(anchor_table, "left")
+    let anchor_right = col(anchor_table, "right")
+    let anchor_score = col(anchor_table, "score")
+    let anchors = range(0, len(anchor_left)) |> map(|index| ({
+        left: anchor_left[index],
+        right: anchor_right[index],
+        score: anchor_score[index]
+    }))
+    let pc_columns = range(1, 31) |> map(|index| "PC_" + str(index))
+    let weight_reduction = matrix_from_table(
+        read_csv(integration_input + "/query-weight-pca.csv"), pc_columns
+    )
+    let integrated = sc_integrate_anchors(
+        left, right, {anchors: anchors, dims: 30}, {
+            k_weight: 100,
+            sd_weight: 1.0,
+            weight_reduction: weight_reduction
+        }
+    )
+    let pca_result = if pca_solver == "lanczos" {
+        sc_pca(integrated, 50, false, {
+            solver: "lanczos", work_extra: 7, tolerance: 0.00001,
+            max_iterations: 1000, seed: 42, initial: pca_initial
+        })
+    } else { sc_pca(integrated, 50, false) }
+    {
+        scores: pca_result.scores,
+        anchors: len(anchors),
+        cells: dim(integrated)[0],
+        features: dim(integrated)[1]
+    }
+}
+
+let started = timestamp_ms()
+let requested_pca_solver = env("BIOLANG_PCA_SOLVER")
+let pca_solver = if requested_pca_solver == nil { "subspace" } else { requested_pca_solver }
+let requested_pca_initial = env("BIOLANG_PCA_INITIAL")
+let pca_initial = if pca_solver == "lanczos" {
+    if requested_pca_initial == nil { error("set BIOLANG_PCA_INITIAL for lanczos") }
+    col(read_csv(requested_pca_initial), "value")
+} else { [] }
+let swapped = swapped_pcs(input_dir, anchor_dir, integration_dir, pca_solver, pca_initial)
+let integration_pca_seconds = float(timestamp_ms() - started) / 1000.0
+let scores40 = select_cols(swapped.scores, range(0, 40))
+let graph_started = timestamp_ms()
+let snn = snn_graph(scores40, 20)
+let graph_seconds = float(timestamp_ms() - graph_started) / 1000.0
+let cluster_started = timestamp_ms()
+let clusters = louvain_graph(snn, swapped.cells, 0.8, 10)
+let cluster_seconds = float(timestamp_ms() - cluster_started) / 1000.0
+
+let metadata = read_csv(metadata_dir + "/cells.csv")
+if nrow(metadata) != swapped.cells {
+    error("anchor-swap cell metadata does not match integrated matrix")
+}
+write_csv(table({
+    sample: col(metadata, "sample"),
+    barcode: col(metadata, "barcode"),
+    cluster: clusters
+}), output_dir + "/cells.csv")
+write_csv(matrix_to_table(matrix(swapped.scores)), output_dir + "/pcs.csv")
+write_csv(table([{
+    cells: swapped.cells,
+    features: swapped.features,
+    anchors: swapped.anchors,
+    pcs: 50,
+    clusters: len(unique(clusters)),
+    integration_pca_seconds: integration_pca_seconds,
+    graph_seconds: graph_seconds,
+    cluster_seconds: cluster_seconds,
+    elapsed_seconds: float(timestamp_ms() - started) / 1000.0
+}]), output_dir + "/summary.csv")
+println("HBC_ANCHOR_SWAP_OK clusters=" + str(len(unique(clusters))) +
+        " seconds=" + str(round(float(timestamp_ms() - started) / 1000.0, 3)))

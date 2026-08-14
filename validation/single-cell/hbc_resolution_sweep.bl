@@ -1,0 +1,65 @@
+# Diagnostic resolution sweep over one fixed BioLang PC embedding and graph.
+# This is a validation upper bound, not a data-tuned production default.
+
+let input_dir = env("BIOLANG_HBC_PC_INPUT")
+let output_dir = env("BIOLANG_HBC_OUTPUT")
+if input_dir == nil or output_dir == nil {
+    error("set BIOLANG_HBC_PC_INPUT and BIOLANG_HBC_OUTPUT")
+}
+let metadata = read_csv(input_dir + "/cells.csv")
+let scores = read_f64_matrix(input_dir + "/matrix.f64")
+let scores40 = select_cols(scores, range(0, 40))
+let graph = snn_graph(scores40, 20)
+
+fn labels(resolution) {
+    louvain_graph(graph, dim(scores40)[0], resolution, 10)
+}
+
+let r040 = labels(0.40)
+let r045 = labels(0.45)
+let r050 = labels(0.50)
+let r055 = labels(0.55)
+let r060 = labels(0.60)
+let r065 = labels(0.65)
+let r070 = labels(0.70)
+let r075 = labels(0.75)
+let r080 = labels(0.80)
+let r085 = labels(0.85)
+let r090 = labels(0.90)
+let r095 = labels(0.95)
+let r100 = labels(1.00)
+let r105 = labels(1.05)
+let r110 = labels(1.10)
+let r115 = labels(1.15)
+let r120 = labels(1.20)
+
+write_csv(table({
+    sample: col(metadata, "sample"),
+    barcode: col(metadata, "barcode"),
+    r040: r040, r045: r045, r050: r050, r055: r055,
+    r060: r060, r065: r065, r070: r070, r075: r075,
+    r080: r080, r085: r085, r090: r090, r095: r095,
+    r100: r100, r105: r105, r110: r110, r115: r115,
+    r120: r120
+}), output_dir + "/cells.csv")
+
+write_csv(table([
+    {resolution: 0.40, clusters: len(unique(r040))},
+    {resolution: 0.45, clusters: len(unique(r045))},
+    {resolution: 0.50, clusters: len(unique(r050))},
+    {resolution: 0.55, clusters: len(unique(r055))},
+    {resolution: 0.60, clusters: len(unique(r060))},
+    {resolution: 0.65, clusters: len(unique(r065))},
+    {resolution: 0.70, clusters: len(unique(r070))},
+    {resolution: 0.75, clusters: len(unique(r075))},
+    {resolution: 0.80, clusters: len(unique(r080))},
+    {resolution: 0.85, clusters: len(unique(r085))},
+    {resolution: 0.90, clusters: len(unique(r090))},
+    {resolution: 0.95, clusters: len(unique(r095))},
+    {resolution: 1.00, clusters: len(unique(r100))},
+    {resolution: 1.05, clusters: len(unique(r105))},
+    {resolution: 1.10, clusters: len(unique(r110))},
+    {resolution: 1.15, clusters: len(unique(r115))},
+    {resolution: 1.20, clusters: len(unique(r120))}
+]), output_dir + "/summary.csv")
+println("HBC_RESOLUTION_SWEEP_OK")

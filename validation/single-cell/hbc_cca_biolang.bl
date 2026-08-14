@@ -1,0 +1,108 @@
+# CCA/anchor isolation on byte-identical 3,000-feature SCT residual matrices.
+
+let input_dir = env("BIOLANG_HBC_CCA_INPUT")
+let output_dir = env("BIOLANG_HBC_CCA_OUTPUT")
+if input_dir == nil or output_dir == nil {
+    error("set BIOLANG_HBC_CCA_INPUT and BIOLANG_HBC_CCA_OUTPUT")
+}
+
+fn embedding_rows(embedding) {
+    range(0, len(embedding)) |> map(|index| ({
+        cell: index,
+        cc_1: embedding[index][0],
+        cc_2: embedding[index][1],
+        cc_3: embedding[index][2],
+        cc_4: embedding[index][3],
+        cc_5: embedding[index][4],
+        cc_6: embedding[index][5],
+        cc_7: embedding[index][6],
+        cc_8: embedding[index][7],
+        cc_9: embedding[index][8],
+        cc_10: embedding[index][9],
+        cc_11: embedding[index][10],
+        cc_12: embedding[index][11],
+        cc_13: embedding[index][12],
+        cc_14: embedding[index][13],
+        cc_15: embedding[index][14],
+        cc_16: embedding[index][15],
+        cc_17: embedding[index][16],
+        cc_18: embedding[index][17],
+        cc_19: embedding[index][18],
+        cc_20: embedding[index][19],
+        cc_21: embedding[index][20],
+        cc_22: embedding[index][21],
+        cc_23: embedding[index][22],
+        cc_24: embedding[index][23],
+        cc_25: embedding[index][24],
+        cc_26: embedding[index][25],
+        cc_27: embedding[index][26],
+        cc_28: embedding[index][27],
+        cc_29: embedding[index][28],
+        cc_30: embedding[index][29]
+    }))
+}
+
+let left = read_f64_matrix(input_dir + "/ctrl.f64")
+let right = read_f64_matrix(input_dir + "/stim.f64")
+let requested_solver = env("BIOLANG_CCA_SOLVER")
+let cca_solver = if requested_solver == nil { "subspace" } else { requested_solver }
+let requested_work = env("BIOLANG_CCA_WORK_EXTRA")
+let cca_work_extra = if requested_work == nil { 7 } else { int(requested_work) }
+let requested_initial = env("BIOLANG_CCA_INITIAL")
+let cca_initial_path = if requested_initial == nil {
+    input_dir + "/irlba-start.csv"
+} else { requested_initial }
+let requested_iterations = env("BIOLANG_CCA_MAX_ITERATIONS")
+let cca_max_iterations = if requested_iterations == nil {
+    1000
+} else { int(requested_iterations) }
+let requested_standardize = env("BIOLANG_CCA_STANDARDIZE")
+let cca_standardize = if requested_standardize == "false" { false } else { true }
+let started = timestamp_ms()
+let cca_options = {
+    reduction: "cca", dims: 30, k_anchor: 5,
+    k_filter: 200, k_score: 30, max_features: 200,
+    cca_sweeps: 12, cca_oversample: 32,
+    cca_solver: cca_solver, cca_work_extra: cca_work_extra,
+    cca_tolerance: 0.00001,
+    cca_max_iterations: cca_max_iterations, cca_seed: 42,
+    cca_standardize: cca_standardize
+}
+let resolved_options = if cca_solver == "lanczos" {
+    {...cca_options,
+     cca_initial: col(read_csv(cca_initial_path), "value")}
+} else { cca_options }
+let result = sc_find_anchors(left, right, resolved_options)
+let elapsed = float(timestamp_ms() - started) / 1000.0
+
+write_csv(table(embedding_rows(result.left_embedding)),
+          output_dir + "/left-embedding.csv")
+write_csv(table(embedding_rows(result.right_embedding)),
+          output_dir + "/right-embedding.csv")
+write_csv(table(result.anchors), output_dir + "/anchors.csv")
+write_csv(table(result.candidate_anchors), output_dir + "/candidate-anchors.csv")
+let feature_metadata = read_csv(input_dir + "/features.csv")
+let feature_names = col(feature_metadata, "gene")
+write_csv(table(range(0, len(result.filter_features)) |> map(|rank| ({
+    rank: rank + 1,
+    gene: feature_names[result.filter_features[rank]],
+    feature_index: result.filter_features[rank]
+}))), output_dir + "/filter-features.csv")
+write_csv(table([{
+    ctrl_cells: dim(left)[0],
+    stim_cells: dim(right)[0],
+    features: dim(left)[1],
+    dimensions: result.dims,
+    candidates: result.anchors_before_filter,
+    retained: len(result.anchors),
+    compute_backend: result.compute_method,
+    cca_sweeps: result.cca_sweeps,
+    cca_oversample: result.cca_oversample,
+    cca_solver: result.cca_solver,
+    cca_work_extra: result.cca_work_extra,
+    cca_tolerance: result.cca_tolerance,
+    elapsed_seconds: elapsed
+}]), output_dir + "/summary.csv")
+println("HBC_CCA_BIOLANG_OK candidates=" + str(result.anchors_before_filter) +
+        " retained=" + str(len(result.anchors)) +
+        " seconds=" + str(round(elapsed, 3)))

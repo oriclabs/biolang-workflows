@@ -1,0 +1,28 @@
+# Run BioLang Louvain over Seurat's exact fixed-PC SNN edge list.
+
+let input_dir = env("BIOLANG_HBC_SEURAT_GRAPH_INPUT")
+let output_dir = env("BIOLANG_HBC_OUTPUT")
+if input_dir == nil or output_dir == nil {
+    error("set BIOLANG_HBC_SEURAT_GRAPH_INPUT and BIOLANG_HBC_OUTPUT")
+}
+let metadata = read_csv(input_dir + "/cells.csv")
+let edge_table = read_csv(input_dir + "/snn.csv")
+let sources = col(edge_table, "source")
+let targets = col(edge_table, "target")
+let weights = col(edge_table, "weight")
+let edges = range(0, len(sources)) |> map(|index| ({
+    source: sources[index], target: targets[index], weight: weights[index]
+}))
+let started = timestamp_ms()
+let clusters = louvain_graph(edges, nrow(metadata), 0.8, 10)
+let elapsed = float(timestamp_ms() - started) / 1000.0
+write_csv(table({
+    sample: col(metadata, "sample"),
+    barcode: col(metadata, "barcode"),
+    cluster: clusters
+}), output_dir + "/cells.csv")
+write_csv(table([{
+    cells: nrow(metadata), edges: len(edges), resolution: 0.8,
+    clusters: len(unique(clusters)), elapsed_seconds: elapsed
+}]), output_dir + "/summary.csv")
+println("HBC_SEURAT_GRAPH_LOUVAIN_OK clusters=" + str(len(unique(clusters))))

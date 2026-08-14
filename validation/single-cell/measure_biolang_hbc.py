@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the BioLang HBC notebook and record wall time and peak host memory."""
+"""Run a BioLang HBC workflow and record wall time and peak host memory."""
 
 from __future__ import annotations
 
@@ -58,6 +58,10 @@ def main() -> int:
         default=os.environ.get("BIOLANG_EXE", "bl.exe" if os.name == "nt" else "bl"),
     )
     parser.add_argument("--biolang-source")
+    parser.add_argument("--ctrl-input")
+    parser.add_argument("--stim-input")
+    parser.add_argument("--ctrl-sct")
+    parser.add_argument("--stim-sct")
     parser.add_argument(
         "--notebook",
         default="workflows/single-cell/hbc_course_validation.bln",
@@ -66,6 +70,7 @@ def main() -> int:
         "--output", default="validation-results/hbc-biolang-current"
     )
     parser.add_argument("--gpu", choices=("auto", "off", "on"), default="off")
+    parser.add_argument("--write-svg", action="store_true")
     args = parser.parse_args()
 
     repo = Path(__file__).resolve().parents[2]
@@ -99,7 +104,27 @@ def main() -> int:
         )
     environment["BIOLANG_GPU"] = args.gpu
     environment["BIOLANG_HBC_OUTPUT"] = str(output)
-    command = [str(executable), "notebook", str(notebook)]
+    environment["BIOLANG_HBC_WRITE_SVG"] = "true" if args.write_svg else "false"
+    required_inputs = {
+        "BIOLANG_HBC_CTRL_INPUT": args.ctrl_input,
+        "BIOLANG_HBC_STIM_INPUT": args.stim_input,
+        "BIOLANG_HBC_CTRL_SCT": args.ctrl_sct,
+        "BIOLANG_HBC_STIM_SCT": args.stim_sct,
+    }
+    for name, value in required_inputs.items():
+        if value:
+            resolved = Path(value).resolve()
+            if not resolved.exists():
+                raise SystemExit(f"{name} path does not exist: {resolved}")
+            environment[name] = str(resolved)
+        elif name not in environment:
+            raise SystemExit(f"pass --{name.removeprefix('BIOLANG_HBC_').lower().replace('_', '-')} or set {name}")
+    # A .bln file is an executable notebook, whereas `bl notebook file.bl`
+    # renders plain source as notebook content and exits successfully without
+    # evaluating it.  Select the command from the artifact type so a measured
+    # "success" always means that the requested analysis actually ran.
+    subcommand = "notebook" if notebook.suffix.casefold() == ".bln" else "run"
+    command = [str(executable), subcommand, str(notebook)]
     creation_flags = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
 
     started = time.perf_counter()
@@ -115,15 +140,36 @@ def main() -> int:
             creationflags=creation_flags,
         )
         peak_bytes = 0
+        last_checkpoint = 0.0
         while process.poll() is None:
             peak_bytes = max(peak_bytes, peak_working_set(process))
+            # Persist a rolling sample so an external timeout or interrupted
+            # terminal still leaves the observed peak and elapsed time.
+            elapsed = time.perf_counter() - started
+            if elapsed - last_checkpoint >= 5.0:
+                partial = {
+                    "executable": str(executable),
+                    "notebook": str(notebook),
+                    "subcommand": subcommand,
+                    "gpu": args.gpu,
+                    "status": "running",
+                    "elapsed_seconds": round(elapsed, 3),
+                    "peak_working_set_bytes_so_far": peak_bytes,
+                    "peak_working_set_gib_so_far": round(peak_bytes / 1024**3, 3),
+                }
+                (output / "resources.partial.json").write_text(
+                    json.dumps(partial, indent=2) + "\n", encoding="utf-8"
+                )
+                last_checkpoint = elapsed
             time.sleep(0.25)
         peak_bytes = max(peak_bytes, peak_working_set(process))
 
     measurement = {
         "executable": str(executable),
         "notebook": str(notebook),
+        "subcommand": subcommand,
         "gpu": args.gpu,
+        "write_svg": args.write_svg,
         "exit_code": process.returncode,
         "wall_seconds": round(time.perf_counter() - started, 3),
         "peak_working_set_bytes": peak_bytes,

@@ -1,0 +1,21 @@
+# Time the native PCA kernel independently of integration, graph construction,
+# and plotting. Set BIOLANG_PCA_TRACE/BIOLANG_PCA_TRACE_SHIFT for convergence
+# diagnostics and BIOLANG_PCA_MAX_SWEEPS to compare bounded runs.
+
+let input = env("BIOLANG_PCA_INPUT")
+if input == nil {
+    error("set BIOLANG_PCA_INPUT to a .f64 matrix")
+}
+
+let values = read_f64_matrix(input)
+let started = timestamp_ms()
+let result = sc_pca(values, 50, false)
+let elapsed = float(timestamp_ms() - started) / 1000.0
+let output = env("BIOLANG_PCA_OUTPUT")
+if output != nil {
+    write_csv(matrix_to_table(matrix(result.scores)), output)
+}
+println("PCA_BENCHMARK_OK rows=" + str(dim(values)[0]) +
+        " cols=" + str(dim(values)[1]) +
+        " components=" + str(result.n_components) +
+        " seconds=" + str(round(elapsed, 3)))

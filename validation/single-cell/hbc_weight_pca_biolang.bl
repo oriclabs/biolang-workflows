@@ -1,0 +1,64 @@
+# Isolate the PCA used by Seurat/BioLang to weight integration anchors.
+
+let input_dir = env("BIOLANG_HBC_CCA_INPUT")
+let output_dir = env("BIOLANG_HBC_CCA_OUTPUT")
+if input_dir == nil or output_dir == nil {
+    error("set BIOLANG_HBC_CCA_INPUT and BIOLANG_HBC_CCA_OUTPUT")
+}
+
+fn embedding_rows(embedding) {
+    range(0, len(embedding)) |> map(|index| ({
+        cell: index,
+        pc_1: embedding[index][0],
+        pc_2: embedding[index][1],
+        pc_3: embedding[index][2],
+        pc_4: embedding[index][3],
+        pc_5: embedding[index][4],
+        pc_6: embedding[index][5],
+        pc_7: embedding[index][6],
+        pc_8: embedding[index][7],
+        pc_9: embedding[index][8],
+        pc_10: embedding[index][9],
+        pc_11: embedding[index][10],
+        pc_12: embedding[index][11],
+        pc_13: embedding[index][12],
+        pc_14: embedding[index][13],
+        pc_15: embedding[index][14],
+        pc_16: embedding[index][15],
+        pc_17: embedding[index][16],
+        pc_18: embedding[index][17],
+        pc_19: embedding[index][18],
+        pc_20: embedding[index][19],
+        pc_21: embedding[index][20],
+        pc_22: embedding[index][21],
+        pc_23: embedding[index][22],
+        pc_24: embedding[index][23],
+        pc_25: embedding[index][24],
+        pc_26: embedding[index][25],
+        pc_27: embedding[index][26],
+        pc_28: embedding[index][27],
+        pc_29: embedding[index][28],
+        pc_30: embedding[index][29]
+    }))
+}
+
+let left = read_f64_matrix(input_dir + "/ctrl.f64")
+let right = read_f64_matrix(input_dir + "/stim.f64")
+let started = timestamp_ms()
+let anchors = sc_find_anchors(left, right, {
+    reduction: "cca", dims: 30, k_anchor: 5,
+    k_filter: 200, k_score: 30, max_features: 200
+})
+let result = sc_integrate_anchors(left, right, anchors, {
+    k_weight: 100, sd_weight: 1.0, return_details: true
+})
+let elapsed = float(timestamp_ms() - started) / 1000.0
+write_csv(table(embedding_rows(result.query_weight_embedding)),
+          output_dir + "/query-weight-pca.csv")
+write_csv(table([{
+    query_cells: len(result.query_weight_embedding),
+    dimensions: len(result.query_weight_embedding[0]),
+    effective_k: result.effective_k,
+    elapsed_seconds: elapsed
+}]), output_dir + "/weight-summary.csv")
+println("HBC_WEIGHT_PCA_BIOLANG_OK seconds=" + str(round(elapsed, 3)))

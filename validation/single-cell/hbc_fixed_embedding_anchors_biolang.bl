@@ -1,0 +1,56 @@
+# Run BioLang filtering and scoring with fixed external CCA embeddings. This
+# is a boundary test: raw SCT residuals still drive the high-dimensional filter.
+
+let matrix_dir = env("BIOLANG_HBC_CCA_INPUT")
+let embedding_dir = env("BIOLANG_HBC_EMBEDDING_INPUT")
+let output_dir = env("BIOLANG_HBC_CCA_OUTPUT")
+if matrix_dir == nil or embedding_dir == nil or output_dir == nil {
+    error("set BIOLANG_HBC_CCA_INPUT, BIOLANG_HBC_EMBEDDING_INPUT and BIOLANG_HBC_CCA_OUTPUT")
+}
+let requested_left_embedding = env("BIOLANG_HBC_LEFT_EMBEDDING")
+let requested_right_embedding = env("BIOLANG_HBC_RIGHT_EMBEDDING")
+let left_embedding_path = if requested_left_embedding == nil {
+    embedding_dir + "/left.f64"
+} else { requested_left_embedding }
+let right_embedding_path = if requested_right_embedding == nil {
+    embedding_dir + "/right.f64"
+} else { requested_right_embedding }
+let left = read_f64_matrix(matrix_dir + "/ctrl.f64")
+let right = read_f64_matrix(matrix_dir + "/stim.f64")
+let left_embedding = read_f64_matrix(left_embedding_path)
+let right_embedding = read_f64_matrix(right_embedding_path)
+let filter_features = col(read_csv(embedding_dir + "/filter-features.csv"), "feature_index")
+let started = timestamp_ms()
+let result = sc_find_anchors(left, right, {
+    reduction: "cca", dims: 30, k_anchor: 5,
+    k_filter: 200, k_score: 30, max_features: 200,
+    left_embedding: left_embedding, right_embedding: right_embedding,
+    filter_features: filter_features, trace_neighbours: true
+})
+let elapsed = float(timestamp_ms() - started) / 1000.0
+write_csv(table(result.anchors), output_dir + "/anchors.csv")
+write_csv(table(result.candidate_anchors), output_dir + "/candidate-anchors.csv")
+write_csv(matrix_to_table(matrix(result.left_to_right_neighbours)),
+          output_dir + "/left-to-right-neighbours.csv")
+write_csv(matrix_to_table(matrix(result.right_to_left_neighbours)),
+          output_dir + "/right-to-left-neighbours.csv")
+write_csv(matrix_to_table(matrix(result.left_within_neighbours)),
+          output_dir + "/left-within-neighbours.csv")
+write_csv(matrix_to_table(matrix(result.right_within_neighbours)),
+          output_dir + "/right-within-neighbours.csv")
+let feature_metadata = read_csv(matrix_dir + "/features.csv")
+let feature_names = col(feature_metadata, "gene")
+write_csv(table(range(0, len(result.filter_features)) |> map(|rank| ({
+    rank: rank + 1,
+    gene: feature_names[result.filter_features[rank]],
+    feature_index: result.filter_features[rank]
+}))), output_dir + "/filter-features.csv")
+write_csv(table([{
+    ctrl_cells: dim(left)[0], stim_cells: dim(right)[0],
+    features: dim(left)[1], dimensions: result.dims,
+    candidates: result.anchors_before_filter, retained: len(result.anchors),
+    compute_backend: result.compute_method, elapsed_seconds: elapsed
+}]), output_dir + "/summary.csv")
+println("HBC_FIXED_EMBEDDING_ANCHORS_OK candidates=" +
+        str(result.anchors_before_filter) + " retained=" + str(len(result.anchors)) +
+        " seconds=" + str(round(elapsed, 3)))

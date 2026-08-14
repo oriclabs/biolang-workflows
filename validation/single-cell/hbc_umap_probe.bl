@@ -1,0 +1,28 @@
+# Isolate UMAP over the saved 40-PC HBC embedding from a completed run.
+
+let input = env("BIOLANG_HBC_PC_CSV")
+let output = env("BIOLANG_HBC_UMAP_PROBE_OUTPUT")
+if input == nil or output == nil {
+    error("set BIOLANG_HBC_PC_CSV and BIOLANG_HBC_UMAP_PROBE_OUTPUT")
+}
+let pc_columns = range(1, 41) |> map(|index| "pc_" + str(index))
+let scores = matrix_from_table(read_csv(input), pc_columns)
+let started = timestamp_ms()
+let embedding = sc_umap(scores, {
+    n_components: 2,
+    n_neighbors: 30,
+    n_epochs: 200,
+    min_dist: 0.3,
+    metric: "cosine",
+    seed: 123456,
+    spread: 1.0,
+    negative_sample_rate: 5
+})
+let elapsed = float(timestamp_ms() - started) / 1000.0
+write_csv(table([{
+    cells: dim(scores)[0],
+    dimensions: dim(scores)[1],
+    output_cells: len(embedding),
+    elapsed_seconds: elapsed
+}]), output)
+println("HBC_UMAP_PROBE_OK seconds=" + str(round(elapsed, 3)))

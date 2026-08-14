@@ -124,6 +124,24 @@ The calibrated oracle requires `glmGamPoi_offset` by default and stops if R
 silently falls back to `nb_offset`. Use `--oracle-method nb_offset` only for a
 separately named comparison of that backend.
 
+To validate the residual assay from an HBC-style
+`SCTransform(vars.to.regress = "mitoRatio")` call, pass a sixth `true` argument
+to `sctransform_oracle.R`. The oracle then applies Seurat's post-VST
+`ScaleData` regression before exporting the stratified residual probe. Compare
+that fresh directory with a provider run made using `--regress-mito`; this
+keeps core-VST and wrapper-level claims distinct. If mitochondrial metadata was
+calculated before gene filtering, use the fixture's barcode-aligned
+`cell-covariates.csv` with `--mito-fraction-file` instead of recomputing it.
+
+Run the external provider with both `--regress-mito` and
+`--seurat-conserve-memory` for that same HBC wrapper contract. The latter keeps
+Seurat's distinct residual-variance ranking and returned-assay clips; omitting
+it intentionally validates direct `sctransform::vst` behavior instead.
+For a two-pass integration export, also pass each sample's original top-feature
+list through `--regress-features-file`; this retains its regressed SCT rows
+while newly requested union features follow `PrepSCTIntegration`'s model-only
+residual path.
+
 ## Full HBC biological validation
 
 `hbc_biological_external_sct.bl` exercises the process boundary used by the
@@ -137,6 +155,64 @@ To determine where partition drift enters, use
 `compare_hbc_cluster_probe.py`. That diagnostic fixes Seurat's integrated PCs
 and tests only BioLang's SNN/Louvain stages. It is an isolation experiment, not
 a mixed-engine analysis workflow.
+
+`hbc_graph_seurat.R`, `hbc_graph_biolang.bl`, and `compare_hbc_graphs.py`
+separate kNN identity, SNN identity/weights, and Louvain partitioning.
+`hbc_louvain_seurat_graph.bl` tests BioLang clustering over the exact Seurat
+SNN. `hbc_resolution_sweep.bl` and `compare_hbc_resolution_sweep.py` provide a
+clearly labelled diagnostic sweep over one fixed embedding and graph; an
+oracle-selected maximum from that sweep must not be presented as independent
+validation or used to change the production default.
+
+For numeric stage boundaries, `prepare_hbc_cca_inputs.py` creates byte-identical
+3,000-feature residual matrices. `hbc_cca_seurat.R` and `hbc_cca_biolang.bl`
+compare CCA coordinates, anchor identities, scores, and filter features;
+`hbc_weight_pca_*` isolates the PCA used for anchor weights; and
+`hbc_integrated_matrix_*` invokes the Seurat compiled weight/correction oracle
+and BioLang over identical scored anchors. The Python comparators report both
+correlation and scale-sensitive slope, RMSE, absolute-error, and neighbour
+identity metrics. These scripts are validation tools and are not runtime
+dependencies or examples of mixing engines in one scientific analysis.
+
+`prepare_hbc_anchor_hybrids.py` creates validation-only pair/score hybrids and
+`compare_hbc_anchor_sensitivity.py` reports how pair identity and score drift
+separately affect the downstream partition. `hbc_anchor_swap_*` can optionally
+export and consume corrected-matrix and PCA artifacts, allowing integrated
+PCA, graph, and clustering to be tested without changing upstream inputs.
+`hbc_cca_biolang.bl` records explicit `cca_sweeps` and `cca_oversample` values;
+these are convergence diagnostics, not parameters to tune against Seurat
+cluster labels.
+
+For full-precision boundary replay, `hbc_cca_seurat.R` also writes `BLMATF64`
+embeddings and projections. `hbc_fixed_embedding_anchors_biolang.bl` holds
+those coordinates fixed while BioLang performs candidate search, filtering,
+and scoring. `hbc_embedding_candidates_*` and
+`hbc_embedding_neighbours_seurat.R` isolate candidate and `k.score` neighbour
+ranks; `compare_hbc_embedding_candidates.py` and
+`compare_hbc_anchor_neighbours.py` require exact discrete agreement. Use
+`prepare_irlba_start.R` plus `BIOLANG_PCA_SOLVER=lanczos` only for a disclosed
+strict-replay run. The native solver remains the untuned independent result.
+
+The current fresh reference has 22 clusters. Exact supplied numeric boundaries
+produce 22 BioLang clusters and ARI 1.0; native CCA produces 20 clusters and
+ARI 0.80802 through the same downstream path. See
+`HBC_REVALIDATION_2026-08-13.md` before quoting either number.
+
+`strict_external_provider_smoke.bl` checks the public package call using
+`compatibility: "external"`. `hbc_external_provider_biolang.bl` is the real-
+data counterpart: it launches the separately installed provider automatically,
+then writes anchors, candidate anchors, labels, stage timings, backend names,
+and provider-version provenance. The 2026-08-14 run matched every anchor and
+the complete 22-cluster reference partition (ARI 1.0 across 29,629 cells).
+This is an optional GPL process boundary, not a claim that native CCA is exact.
+
+`compare_sctransform_sampling.R` reconstructs the public density weights and
+ordered fit-gene sample for diagnosis. `benchmark_pca.bl` times PCA separately
+from integration and accepts `BIOLANG_PCA_INPUT`; optional
+`BIOLANG_PCA_TRACE`, `BIOLANG_PCA_TRACE_SHIFT`, and
+`BIOLANG_PCA_MAX_SWEEPS` settings expose convergence without changing the HBC
+workflow. These are diagnostic controls, not parameters to tune against Seurat
+cluster labels.
 
 The latest measured real-data results, limitations, resource figures, and the
 licensing boundary are recorded in [HBC_SEURAT_VALIDATION.md](HBC_SEURAT_VALIDATION.md).

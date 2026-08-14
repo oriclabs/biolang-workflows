@@ -20,10 +20,13 @@ suppressPackageStartupMessages({
 })
 
 args <- commandArgs(trailingOnly = TRUE)
-if (length(args) < 3L || length(args) > 5L) {
+if (length(args) < 3L || length(args) > 6L) {
   stop(paste(
     "usage: Rscript sctransform_oracle.R",
-    "synthetic|sampling|tenx INPUT_DIR OUTPUT_DIR [MAX_PROBE_GENES] [MAX_PROBE_CELLS]"
+    paste0(
+      "synthetic|sampling|tenx INPUT_DIR OUTPUT_DIR [MAX_PROBE_GENES] ",
+      "[MAX_PROBE_CELLS] [REGRESS_MITO]"
+    )
   ))
 }
 
@@ -32,6 +35,11 @@ input_dir <- normalizePath(args[[2L]], mustWork = FALSE)
 output_dir <- normalizePath(args[[3L]], mustWork = FALSE)
 max_probe_genes <- if (length(args) >= 4L) as.integer(args[[4L]]) else 3000L
 max_probe_cells <- if (length(args) >= 5L) as.integer(args[[5L]]) else 64L
+regress_mito <- if (length(args) >= 6L) {
+  tolower(args[[6L]]) %in% c("1", "true", "yes")
+} else {
+  FALSE
+}
 
 assert_fresh_directory <- function(path, label) {
   if (dir.exists(path) && length(list.files(path, all.files = TRUE, no.. = TRUE)) > 0L) {
@@ -174,7 +182,7 @@ oracle <- sctransform::vst(
   return_corrected_umi = FALSE,
   verbosity = 0
 )
-elapsed <- proc.time()[["elapsed"]] - started
+vst_elapsed <- proc.time()[["elapsed"]] - started
 
 model <- as.data.frame(oracle$model_pars_fit)
 raw_model <- as.data.frame(oracle$model_pars)
@@ -186,6 +194,22 @@ if (length(intercept_name) != 1L || !"theta" %in% colnames(model)) {
 }
 if (!"residual_variance" %in% colnames(attributes)) {
   stop("unexpected sctransform gene_attr columns: ", paste(colnames(attributes), collapse = ", "))
+}
+
+# Seurat's conserve.memory wrapper deliberately uses a wider clip while
+# calculating the variable-feature ranking, then applies `clip.range` to the
+# returned scale-data below. Reproduce that two-clip contract when validating
+# the HBC wrapper rather than silently substituting direct-vst ranking.
+ranking_clip <- clip
+if (regress_mito) {
+  ranking_clip <- sqrt(ncol(umi))
+  wrapper_variance <- sctransform::get_residual_var(
+    vst_out = oracle,
+    umi = umi,
+    residual_type = "pearson",
+    res_clip_range = c(-ranking_clip, ranking_clip)
+  )
+  attributes[names(wrapper_variance), "residual_variance"] <- wrapper_variance
 }
 
 ranked <- rownames(attributes)[order(attributes$residual_variance, decreasing = TRUE)]
@@ -210,9 +234,42 @@ rank_rows <- data.frame(
   stringsAsFactors = FALSE
 )
 
-# vst returns gene x cell residuals. BioLang exposes centered scale-data, so
-# center after the identical clipping boundary before exporting observations.
-centered <- oracle$y - rowMeans(oracle$y)
+# vst returns gene x cell residuals. SCTransform clips those residuals and then
+# calls Seurat::ScaleData for vars.to.regress. Keep this optional so the core
+# VST fit and the exact HBC wrapper flow are independently measurable.
+if (regress_mito) {
+  suppressPackageStartupMessages(library(Seurat))
+  mitochondrial <- startsWith(rownames(umi), "MT-")
+  mito_ratio <- if (any(mitochondrial)) {
+    Matrix::colSums(umi[mitochondrial, , drop = FALSE]) / Matrix::colSums(umi)
+  } else {
+    rep(0, ncol(umi))
+  }
+  latent <- data.frame(mitoRatio = as.numeric(mito_ratio))
+  rownames(latent) <- colnames(umi)
+  centered <- Seurat::ScaleData(
+    oracle$y,
+    features = NULL,
+    vars.to.regress = "mitoRatio",
+    latent.data = latent,
+    model.use = "linear",
+    use.umi = FALSE,
+    do.scale = FALSE,
+    do.center = TRUE,
+    scale.max = Inf,
+    block.size = 750,
+    min.cells.to.block = 3000,
+    verbose = FALSE
+  )
+} else {
+  # The no-covariate SCTransform path still centers scale.data.
+  centered <- oracle$y - rowMeans(oracle$y)
+}
+elapsed <- if (regress_mito) {
+  proc.time()[["elapsed"]] - started
+} else {
+  vst_elapsed
+}
 # Validate the genes that drive variable-feature selection and PCA. A prefix of
 # the input gene axis systematically misses the high-residual-variance tail.
 probe_genes <- head(intersect(ranked, rownames(centered)), max_probe_genes)
@@ -254,7 +311,8 @@ write.csv(
       NA_character_
     },
     cells = ncol(umi), genes = nrow(umi), modelled_genes = nrow(model),
-    clip = clip, seed = 1448145L, cells_for_fit = min(5000L, ncol(umi)),
+    clip = clip, ranking_clip = ranking_clip,
+    seed = 1448145L, cells_for_fit = min(5000L, ncol(umi)),
     genes_for_fit = min(2000L, nrow(umi)), min_cells = 5L,
     actual_method = as.character(argument("method")),
     actual_n_cells = as.integer(argument("n_cells")),
@@ -263,9 +321,11 @@ write.csv(
     actual_theta_regularization = as.character(argument("theta_regularization")),
     actual_min_variance = as.character(argument("min_variance")),
     actual_bw_adjust = as.numeric(argument("bw_adjust")),
+    mitochondrial_fraction_regressed = regress_mito,
     residual_probe_strategy = "top_residual_variance",
     residual_probe_genes = length(probe_genes),
     residual_probe_cells = length(probe_cells),
+    vst_elapsed_seconds = vst_elapsed,
     elapsed_seconds = elapsed
   ),
   file.path(output_dir, "manifest.csv"), row.names = FALSE, quote = TRUE

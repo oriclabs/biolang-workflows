@@ -1,0 +1,36 @@
+# Optional process-boundary smoke test. Requires bl-seurat-provider and its
+# pinned R environment; it is not part of BioLang's hermetic package tests.
+
+import "singlecell" as sc
+
+let genes = range(0, 20) |> map(|gene| "G" + str(gene))
+let left_counts = range(0, 12) |> map(|cell| range(0, 20) |> map(|gene| {
+    let group = if cell < 6 { 12 } else { 2 }
+    if gene < 8 { group + ((cell * 7 + gene * 3) % 5) }
+    else { 14 - group + ((cell * 5 + gene * 2) % 5) }
+}))
+let right_counts = range(0, 12) |> map(|cell| range(0, 20) |> map(|gene| {
+    let group = if cell < 6 { 16 } else { 4 }
+    if gene < 8 { group + ((cell * 7 + gene * 3) % 5) }
+    else { 18 - group + ((cell * 5 + gene * 2) % 5) }
+}))
+let left = sc.from_matrix(left_counts, genes, range(0, 12) |> map(|i| "L" + str(i)))
+let right = sc.from_matrix(right_counts, genes, range(0, 12) |> map(|i| "R" + str(i)))
+
+let anchors = sc.find_integration_anchors(
+    left, right, reduction: "cca", n_features: 15, dims: 3,
+    k_anchor: 3, k_score: 4, k_filter: 5, max_features: 12,
+    compatibility: "external"
+)
+assert anchors.compute_backend == "external_process_cca_embedding"
+assert contains(keys(anchors), "weight_reduction")
+assert contains(keys(anchors), "external_provider")
+assert anchors.external_provider_manifest.protocol == "BLSEURAT-1"
+assert anchors.external_provider_manifest.provider_version == "0.1.0"
+assert anchors.external_provider_manifest.seurat == "5.5.1"
+let integrated = sc.integrate_data(anchors, k_weight: 5)
+assert integrated.n_cells == 24
+assert contains(integrated.pca.compute_method, "external_process")
+assert integrated.pca.external_provider_manifest.provider_version == "0.1.0"
+println("STRICT_EXTERNAL_PROVIDER_SMOKE_OK anchors=" + str(len(anchors.anchors)) +
+        " pcs=" + str(integrated.pca.n_components))

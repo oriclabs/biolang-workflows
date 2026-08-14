@@ -117,7 +117,17 @@ markers <- FindAllMarkers(
   test.use = "wilcox",
   verbose = TRUE
 )
-markers$gene <- rownames(markers)
+# Seurat 5 already returns the biological feature name in `gene`.
+# Data-frame row names are only uniqueness labels; when one gene is a marker
+# for several clusters R appends integers (for example POLR2I -> POLR2I1).
+# Overwriting the real column with those labels corrupts cross-cluster marker
+# comparisons while leaving the row count and most tables superficially valid.
+if (!"gene" %in% colnames(markers)) {
+  markers$gene <- rownames(markers)
+}
+if (!all(markers$gene %in% rownames(filtered))) {
+  stop("marker export contains feature labels absent from the RNA assay")
+}
 write.csv(
   markers,
   file.path(output_dir, "markers.csv"),

@@ -14,6 +14,7 @@ let stim_input = env("BIOLANG_HBC_STIM_INPUT")
 let ctrl_sct_dir = env("BIOLANG_HBC_CTRL_SCT")
 let stim_sct_dir = env("BIOLANG_HBC_STIM_SCT")
 let output_dir = env("BIOLANG_HBC_OUTPUT")
+let write_svg = lower(str(env("BIOLANG_HBC_WRITE_SVG"))) == "true"
 
 if ctrl_input == nil or stim_input == nil or ctrl_sct_dir == nil or
    stim_sct_dir == nil or output_dir == nil {
@@ -22,6 +23,13 @@ if ctrl_input == nil or stim_input == nil or ctrl_sct_dir == nil or
 }
 
 fn attach_external_sct(obj, directory) {
+    let manifest = read_csv(directory + "/manifest.csv")
+    let mito = lower(str(col(manifest, "mitochondrial_fraction_regressed")[0]))
+    let conserve = lower(str(col(manifest, "seurat_conserve_memory")[0]))
+    if mito != "true" or conserve != "true" {
+        error("external SCT artifact must be created with --regress-mito " +
+              "and --seurat-conserve-memory for the HBC Seurat flow")
+    }
     let parameters = read_csv(directory + "/genes.csv")
     let ranking = read_csv(directory + "/ranking.csv")
     let kept = col(parameters, "gene_index") |> map(|value| int(value))
@@ -47,52 +55,71 @@ fn attach_external_sct(obj, directory) {
         assays: {... obj.assays, SCT: {
             layers: {data: residuals, scale_data: residuals},
             variable_features: selected_names,
-            model: "external_gpl_sctransform_v2_offset",
+            model: "external_gpl_sctransform_v2_offset_seurat_conserve_memory",
             covariates_regressed: 1
         }}
     }
 }
 
+fn prepare_integrated(ctrl_path, stim_path, ctrl_provider, stim_provider, output) {
+    let load_timer = timer()
+    println("load filtered HBC count matrices")
+    let ctrl = sc.load(ctrl_path)
+    let stim = sc.load(stim_path)
+    if ctrl.n_cells != 14847 or stim.n_cells != 14782 {
+        error("HBC cell checkpoint failed")
+    }
+    if ctrl.n_genes != 14065 or stim.n_genes != 14065 or ctrl.genes != stim.genes {
+        error("HBC gene checkpoint failed")
+    }
+    let load_seconds = timer_elapsed(load_timer)
+
+    println("load process-isolated SCT residuals")
+    let sct_timer = timer()
+    let ctrl_sct = attach_external_sct(ctrl, ctrl_provider)
+    let stim_sct = attach_external_sct(stim, stim_provider)
+    let sct_load_seconds = timer_elapsed(sct_timer)
+
+    println("select 3,000 integration features")
+    let feature_timer = timer()
+    let integration_features = sc.select_integration_features(ctrl_sct, stim_sct, 3000)
+    write_csv(table(range(0, len(integration_features)) |> map(|index| {
+        {rank: index + 1, gene: ctrl.genes[integration_features[index]]}
+    })), output + "/features.csv")
+    let feature_seconds = timer_elapsed(feature_timer)
+
+    println("find CCA anchors")
+    let anchor_timer = timer()
+    let anchors = sc.find_integration_anchors(
+        ctrl_sct, stim_sct, "cca", 3000, 30, 5, 30
+    )
+    let anchor_seconds = timer_elapsed(anchor_timer)
+    println("anchors: " + str(len(anchors.anchors)) +
+            " candidates=" + str(anchors.anchors_before_filter) +
+            " backend=" + anchors.compute_backend)
+
+    println("integrate data and calculate 50 PCs")
+    let integrate_timer = timer()
+    let corrected = sc.integrate_data(anchors, 100, 1.0)
+    let integrate_seconds = timer_elapsed(integrate_timer)
+    {
+        corrected: corrected,
+        load_seconds: load_seconds,
+        sct_load_seconds: sct_load_seconds,
+        feature_seconds: feature_seconds,
+        anchor_seconds: anchor_seconds,
+        integrate_seconds: integrate_seconds,
+        anchor_candidates: anchors.anchors_before_filter,
+        anchor_count: len(anchors.anchors),
+        compute_backend: anchors.compute_backend
+    }
+}
+
 let total_timer = timer()
-let load_timer = timer()
-println("load filtered HBC count matrices")
-let ctrl = sc.load(ctrl_input)
-let stim = sc.load(stim_input)
-if ctrl.n_cells != 14847 or stim.n_cells != 14782 {
-    error("HBC cell checkpoint failed")
-}
-if ctrl.n_genes != 14065 or stim.n_genes != 14065 or ctrl.genes != stim.genes {
-    error("HBC gene checkpoint failed")
-}
-let load_seconds = timer_elapsed(load_timer)
-
-println("load process-isolated SCT residuals")
-let sct_timer = timer()
-let ctrl_sct = attach_external_sct(ctrl, ctrl_sct_dir)
-let stim_sct = attach_external_sct(stim, stim_sct_dir)
-let sct_load_seconds = timer_elapsed(sct_timer)
-
-println("select 3,000 integration features")
-let feature_timer = timer()
-let integration_features = sc.select_integration_features(ctrl_sct, stim_sct, 3000)
-write_csv(table(range(0, len(integration_features)) |> map(|index| {
-    {rank: index + 1, gene: ctrl.genes[integration_features[index]]}
-})), output_dir + "/features.csv")
-let feature_seconds = timer_elapsed(feature_timer)
-
-println("find CCA anchors")
-let anchor_timer = timer()
-let anchors = sc.find_integration_anchors(
-    ctrl_sct, stim_sct, "cca", 3000, 30, 5, 30
+let prepared = prepare_integrated(
+    ctrl_input, stim_input, ctrl_sct_dir, stim_sct_dir, output_dir
 )
-let anchor_seconds = timer_elapsed(anchor_timer)
-println("anchors: " + str(len(anchors.anchors)) +
-        " backend=" + anchors.compute_backend)
-
-println("integrate data and calculate 50 PCs")
-let integrate_timer = timer()
-let corrected = sc.integrate_data(anchors, 100, 1.0)
-let integrate_seconds = timer_elapsed(integrate_timer)
+let corrected = prepared.corrected
 
 println("construct 20-neighbour SNN over 40 PCs")
 let neighbor_timer = timer()
@@ -110,10 +137,12 @@ println("UMAP over 40 PCs")
 let umap_timer = timer()
 let embedded = sc.run_umap(clustered, 40, 30, 0.3, 123456)
 let umap_seconds = timer_elapsed(umap_timer)
-write_text(output_dir + "/umap.svg",
-    sc.plot_embedding(embedded, embedded.clusters,
+if write_svg {
+    write_text(output_dir + "/umap.svg",
+        sc.plot_embedding(embedded, embedded.clusters,
         "HBC PBMC — external SCT, BioLang downstream"))
 
+}
 println("RNA log-normalization and positive marker discovery")
 let marker_timer = timer()
 let marker_ready = sc.normalize(embedded, 10000.0)
@@ -133,6 +162,42 @@ let cell_rows = range(0, embedded.n_cells) |> map(|index| {
 })
 write_csv(table(cell_rows), output_dir + "/cells.csv")
 
+
+let total_seconds = timer_elapsed(total_timer)
+write_csv(table([{
+    cells: embedded.n_cells,
+    genes: embedded.n_genes,
+    variable_genes: len(embedded.integrated_features),
+    anchor_candidates: prepared.anchor_candidates,
+    anchors: prepared.anchor_count,
+    # Read what was used, not what was asked for. These differed silently on
+    # this very workflow: 40 requested, 30 used, 40 reported.
+    pcs: embedded.neighbor_dims,
+    pcs_requested: 40,
+    neighbors: 20,
+    resolution: 0.8,
+    clusters: cluster_count,
+    positive_marker_rows: len(markers),
+    compute_backend: prepared.compute_backend,
+    normalization_backend: "external-gpl-sctransform-rs"
+}]), output_dir + "/summary.csv")
+write_csv(table([
+    {stage: "load_counts", elapsed_seconds: prepared.load_seconds},
+    {stage: "load_sct", elapsed_seconds: prepared.sct_load_seconds},
+    {stage: "select_features", elapsed_seconds: prepared.feature_seconds},
+    {stage: "anchors", elapsed_seconds: prepared.anchor_seconds},
+    {stage: "integrate_pca", elapsed_seconds: prepared.integrate_seconds},
+    {stage: "neighbors", elapsed_seconds: neighbor_seconds},
+    {stage: "cluster", elapsed_seconds: cluster_seconds},
+    {stage: "umap", elapsed_seconds: umap_seconds},
+    {stage: "markers", elapsed_seconds: marker_seconds},
+    {stage: "total", elapsed_seconds: total_seconds}
+]), output_dir + "/timings.csv")
+
+# Written last, and deliberately so. This block hardcodes forty PC columns;
+# when the embedding held thirty it raised, and because it ran before the
+# summary and timings were written, a complete nine-minute analysis left no
+# record of itself at all. Reporting is not worth losing results over.
 let pc = matrix(embedded.pca_scores)
 write_csv(table({
     sample: embedded.batch_ids |> map(|batch| if batch == 0 { "ctrl" } else { "stim" }),
@@ -152,33 +217,6 @@ write_csv(table({
     pc_37: mat_col(pc, 36), pc_38: mat_col(pc, 37), pc_39: mat_col(pc, 38),
     pc_40: mat_col(pc, 39)
 }), output_dir + "/pcs.csv")
-
-let total_seconds = timer_elapsed(total_timer)
-write_csv(table([{
-    cells: embedded.n_cells,
-    genes: embedded.n_genes,
-    variable_genes: len(embedded.integrated_features),
-    anchors: len(anchors.anchors),
-    pcs: 40,
-    neighbors: 20,
-    resolution: 0.8,
-    clusters: cluster_count,
-    positive_marker_rows: len(markers),
-    compute_backend: anchors.compute_backend,
-    normalization_backend: "external-gpl-sctransform-rs"
-}]), output_dir + "/summary.csv")
-write_csv(table([
-    {stage: "load_counts", elapsed_seconds: load_seconds},
-    {stage: "load_sct", elapsed_seconds: sct_load_seconds},
-    {stage: "select_features", elapsed_seconds: feature_seconds},
-    {stage: "anchors", elapsed_seconds: anchor_seconds},
-    {stage: "integrate_pca", elapsed_seconds: integrate_seconds},
-    {stage: "neighbors", elapsed_seconds: neighbor_seconds},
-    {stage: "cluster", elapsed_seconds: cluster_seconds},
-    {stage: "umap", elapsed_seconds: umap_seconds},
-    {stage: "markers", elapsed_seconds: marker_seconds},
-    {stage: "total", elapsed_seconds: total_seconds}
-]), output_dir + "/timings.csv")
 
 println("HBC_BIOLOGICAL_VALIDATION_OK cells=" + str(embedded.n_cells) +
         " clusters=" + str(cluster_count) +

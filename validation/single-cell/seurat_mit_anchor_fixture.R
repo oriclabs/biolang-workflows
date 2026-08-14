@@ -120,6 +120,30 @@ corrected <- Seurat:::IntegrateDataC(
 write.csv(as.matrix(weights), file.path(out_dir, "weights.csv"), quote = FALSE)
 writeLines(sprintf("%.17g", as.numeric(corrected[1, 1])),
            file.path(out_dir, "corrected.txt"))
+
+# A query anchor cell can map to multiple integration-vector rows, but the
+# compiled routine stops after k.weight rows in total. This fixture makes that
+# otherwise unobvious `k < indices.size()` behavior measurable.
+duplicate.weights <- Seurat:::FindWeightsC(
+  cells2 = 0,
+  distances = matrix(c(0.8, 0.8, 0.0), nrow = 1),
+  anchor_cells2 = c("q0", "q1", "q2"),
+  integration_matrix_rownames = c("q0", "q0", "q0", "q1", "q2"),
+  cell_index = matrix(c(1, 2, 3), nrow = 1),
+  anchor_score = c(0.5, 1.0, 0.8, 1.0, 1.0),
+  min_dist = 0,
+  sd = 1,
+  display_progress = FALSE
+)
+duplicate.expected <- 1 - exp(-0.8 * c(0.5, 1.0, 0.8) / 4)
+duplicate.expected <- duplicate.expected / sum(duplicate.expected)
+stopifnot(isTRUE(all.equal(
+  as.numeric(duplicate.weights),
+  c(duplicate.expected, 0, 0),
+  tolerance = 1e-12
+)))
+write.csv(as.matrix(duplicate.weights),
+          file.path(out_dir, "duplicate-anchor-weights.csv"), quote = FALSE)
 writeLines(capture.output(sessionInfo()), file.path(out_dir, "session-info.txt"))
 
 cat(normalizePath(out_dir, winslash = "/", mustWork = TRUE), "\n")

@@ -1,0 +1,67 @@
+# End-to-end strict numeric boundary through the separately installed provider.
+# BioLang still performs anchor search/scoring, correction, SNN, and Louvain.
+
+let input_dir = env("BIOLANG_HBC_CCA_INPUT")
+let metadata_dir = env("BIOLANG_HBC_SEURAT_PC_INPUT")
+let output_dir = env("BIOLANG_HBC_OUTPUT")
+if input_dir == nil or metadata_dir == nil or output_dir == nil {
+    error("set BIOLANG_HBC_CCA_INPUT, BIOLANG_HBC_SEURAT_PC_INPUT, and BIOLANG_HBC_OUTPUT")
+}
+
+let left = read_f64_matrix(input_dir + "/ctrl.f64")
+let right = read_f64_matrix(input_dir + "/stim.f64")
+let started = timestamp_ms()
+let anchor_started = timestamp_ms()
+let anchors = sc_find_anchors(left, right, {
+    reduction: "cca", dims: 30, k_anchor: 5,
+    k_filter: 200, k_score: 30, max_features: 200,
+    external_provider: "auto"
+})
+let anchor_seconds = float(timestamp_ms() - anchor_started) / 1000.0
+
+let correction_started = timestamp_ms()
+let integrated = sc_integrate_anchors(left, right, anchors, {
+    k_weight: 100, sd_weight: 1.0,
+    weight_reduction: anchors.weight_reduction
+})
+let correction_seconds = float(timestamp_ms() - correction_started) / 1000.0
+
+let pca_started = timestamp_ms()
+let pca = sc_pca(integrated, 50, false, {
+    solver: "external", external_provider: anchors.external_provider
+})
+let pca_seconds = float(timestamp_ms() - pca_started) / 1000.0
+
+let graph_started = timestamp_ms()
+let snn = snn_graph(select_cols(pca.scores, range(0, 40)), 20)
+let graph_seconds = float(timestamp_ms() - graph_started) / 1000.0
+let cluster_started = timestamp_ms()
+let clusters = louvain_graph(snn, dim(integrated)[0], 0.8, 10)
+let cluster_seconds = float(timestamp_ms() - cluster_started) / 1000.0
+
+let metadata = read_csv(metadata_dir + "/cells.csv")
+if nrow(metadata) != len(clusters) { error("strict provider metadata mismatch") }
+write_csv(table({
+    sample: col(metadata, "sample"), barcode: col(metadata, "barcode"),
+    cluster: clusters
+}), output_dir + "/cells.csv")
+write_csv(table(anchors.anchors), output_dir + "/anchors.csv")
+write_csv(table(anchors.candidate_anchors), output_dir + "/candidate-anchors.csv")
+write_csv(table([{
+    cells: dim(integrated)[0], features: dim(integrated)[1],
+    candidates: anchors.anchors_before_filter, retained: len(anchors.anchors),
+    clusters: len(unique(clusters)), anchor_seconds: anchor_seconds,
+    correction_seconds: correction_seconds, pca_seconds: pca_seconds,
+    graph_seconds: graph_seconds, cluster_seconds: cluster_seconds,
+    elapsed_seconds: float(timestamp_ms() - started) / 1000.0,
+    anchor_backend: anchors.compute_method,
+    pca_backend: pca.compute_method,
+    provider_protocol: anchors.external_provider_manifest.protocol,
+    provider_name: anchors.external_provider_manifest.provider,
+    provider_version: anchors.external_provider_manifest.provider_version,
+    seurat_version: anchors.external_provider_manifest.seurat,
+    irlba_version: anchors.external_provider_manifest.irlba
+}]), output_dir + "/summary.csv")
+println("HBC_EXTERNAL_PROVIDER_OK clusters=" + str(len(unique(clusters))) +
+        " anchors=" + str(len(anchors.anchors)) +
+        " seconds=" + str(round(float(timestamp_ms() - started) / 1000.0, 3)))

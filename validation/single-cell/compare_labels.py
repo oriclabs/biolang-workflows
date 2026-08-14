@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import json
 import math
 from collections import Counter
 from pathlib import Path
@@ -12,7 +13,11 @@ from pathlib import Path
 def read_labels(path: Path) -> dict[str, str]:
     with path.open(newline="", encoding="utf-8") as handle:
         rows = csv.DictReader(handle)
-        return {row["barcode"]: row["cluster"] for row in rows}
+        return {
+            (f'{row["sample"]}::{row["barcode"]}' if "sample" in row else row["barcode"]):
+            row["cluster"]
+            for row in rows
+        }
 
 
 def choose2(value: int) -> int:
@@ -41,6 +46,7 @@ def main() -> None:
     parser.add_argument("reference", type=Path)
     parser.add_argument("candidate", type=Path)
     parser.add_argument("--min-ari", type=float, default=0.70)
+    parser.add_argument("--output", type=Path)
     args = parser.parse_args()
 
     reference = read_labels(args.reference)
@@ -52,10 +58,21 @@ def main() -> None:
         [reference[barcode] for barcode in shared],
         [candidate[barcode] for barcode in shared],
     )
+    result = {
+        "shared_cells": len(shared),
+        "reference_cells": len(reference),
+        "candidate_cells": len(candidate),
+        "reference_clusters": len({reference[cell] for cell in shared}),
+        "candidate_clusters": len({candidate[cell] for cell in shared}),
+        "adjusted_rand_index": ari,
+    }
     print(
-        f"shared={len(shared)} reference={len(reference)} "
-        f"candidate={len(candidate)} ARI={ari:.4f}"
+        f"shared={result['shared_cells']} reference={result['reference_cells']} "
+        f"candidate={result['candidate_cells']} ARI={ari:.4f}"
     )
+    if args.output is not None:
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
     if ari < args.min_ari:
         raise SystemExit(
             f"ARI {ari:.4f} is below required threshold {args.min_ari:.4f}"
