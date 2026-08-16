@@ -1,14 +1,18 @@
 # Day 17: Survival Analysis — Time-to-Event Data
 
-## Practical question
+> **Start here**
+> - **In one sentence:** Survival analysis uses both follow-up time and whether the event was observed or censored.
+> - **Look for:** survival steps, numbers still at risk, censoring marks, curve separation, and changing effects over time.
+> - **Use this when:** time to death, relapse, recovery, failure, or another event is the outcome.
+> - **Do not conclude:** that a hazard ratio is a survival probability, a risk reduction for one person, or a ratio of survival times.
 
-**Synthetic teaching data:** follow-up times are available for two groups, but
-40% of observations have not experienced the event by the end of follow-up.
-Their event times are not known; only a lower bound is known. How can we compare
-time-to-event patterns without discarding that information?
+## The Problem
 
-This is **right-censoring**, the reason ordinary averages and t-tests are not
-appropriate for this question.
+Dr. Elena Volkov is a cancer genomicist analyzing overall survival in 250 lung adenocarcinoma patients. She has tumor sequencing data and wants to answer: **Do TP53-mutant patients survive longer than TP53 wild-type patients?**
+
+Her first attempt: compute the mean survival time for each group and run a t-test. But she immediately hits a wall. 40% of patients are **still alive** at the end of the study. Their survival time is **at least** 36 months — but she doesn't know their actual survival time. Dropping these patients biases the analysis (the longest survivors are removed). Using 36 months as their survival time underestimates it.
+
+This is the problem of **censoring**, and it requires survival analysis.
 
 ## What Is Censoring?
 
@@ -122,9 +126,10 @@ Where:
 
 The **median survival** is the time at which the KM curve crosses 0.50 — the point where half the patients have experienced the event. It is more robust than the mean because it is less affected by a few extreme values.
 
-> **Practical relevance:** Median survival is useful when the Kaplan-Meier curve
-> crosses 0.5 and follow-up supports the estimate. Also report uncertainty and
-> consider the full curve, censoring pattern, and prespecified effect measure.
+> **Clinical relevance:** Median survival is one useful summary when each curve
+> falls below 50%, but it discards the rest of the follow-up pattern. Also
+> report uncertainty, numbers at risk, clinically relevant time-point survival,
+> adverse outcomes, and an analysis suited to the study question.
 
 <div style="text-align: center; margin: 2em 0;">
 <svg width="680" height="380" viewBox="0 0 680 380" xmlns="http://www.w3.org/2000/svg" style="background: #fafafa; border: 1px solid #e5e7eb; border-radius: 8px;">

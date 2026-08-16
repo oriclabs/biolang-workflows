@@ -1,14 +1,16 @@
 # Day 14: Linear Regression — Prediction from Data
 
-## Practical question
+> **Start here**
+> - **In one sentence:** Linear regression describes how the expected outcome changes as a predictor changes.
+> - **Look for:** the fitted line, uncertainty band, residual pattern, influential observations, and extrapolation.
+> - **Use this when:** a straight-line conditional mean is a sensible description or prediction target.
+> - **Do not conclude:** that a fitted slope is causal merely because it is precise or statistically significant.
 
-**Synthetic teaching data shaped like a cell-line screen:** target-gene
-expression and drug IC50 are measured for 60 cell lines. Given a new cell line
-within the observed expression range, what IC50 does a straight-line model
-predict, and how uncertain is that prediction?
+## The Problem
 
-Correlation summarizes co-variation. Regression adds an explicit prediction
-model whose residuals, range of use, and validation must be checked.
+Dr. James Park is a pharmacogenomicist working with the NCI-60 cell line panel — 60 cancer cell lines spanning 9 tissue types. He has gene expression data and drug sensitivity measurements (IC50 values) for each line. His question: **Can we predict how sensitive a cell line will be to a new kinase inhibitor based on its expression of the drug's target gene?**
+
+He knows the target gene and IC50 seem correlated (Day 13 confirmed r = -0.72). But correlation just says "they move together." James needs to go further: given a **new cell line** with a known expression level, what IC50 should he **predict**? And how confident should he be?
 
 This is the leap from **association** to **prediction** — the domain of linear regression.
 
@@ -99,7 +101,10 @@ Correlation and simple regression are intimately linked:
 | β₁ (slope) | How much Y changes per unit change in X |
 | p-value of β₁ | Whether the slope is significantly different from zero |
 
-If r = -0.72, then R² = 0.52, meaning 52% of the variation in IC50 is explained by target expression. The remaining 48% is unexplained — due to other genes, pathway redundancy, or noise.
+If r = -0.72 in simple linear regression, R² = 0.52: the fitted line accounts
+for 52% of the observed variation in IC50 in this sample. That is descriptive,
+not proof that expression caused the variation; the remainder may reflect
+other predictors, measurement variation, model mismatch, or random variation.
 
 ## Interpreting Regression Output
 

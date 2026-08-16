@@ -1,5 +1,11 @@
 # Day 27: Reproducible Statistical Analysis
 
+> **Start here**
+> - **In one sentence:** A reproducible analysis can be rerun from recorded inputs, code, configuration, software versions, and seeds.
+> - **Look for:** provenance, immutable inputs, explicit parameters, environment information, checks, and generated outputs.
+> - **Use this when:** doing any analysis that another person—or future you—may need to verify or update.
+> - **Do not conclude:** that having a script or repository automatically makes the scientific result correct or reproducible.
+
 <div class="day-meta">
 <span class="badge">Day 27 of 30</span>
 <span class="badge">Prerequisites: All previous days</span>
@@ -7,22 +13,19 @@
 <span class="badge">Best Practices</span>
 </div>
 
-## Practical question
+## The Problem
 
-Three input samples change. Can the complete analysis be rerun in the correct
-order with recorded software versions and seeds, producing traceable outputs
-without editing paths by hand?
+It is 11 PM on a Thursday. Your collaborator emails: "The sequencing core re-processed 3 samples with updated base-calling. Can you re-run the entire analysis with the updated data? The manuscript revision is due Monday."
 
-Reproducibility is practical maintenance: explicit inputs, one documented
-entry point, deterministic steps where possible, versioned code, checks, and a
-record of the environment.
+You open your analysis folder. There are 14 scripts with names like `analysis_v2_final_FINAL.bl`, `test_new.bl`, and `run_this_one.bl`. You cannot remember which scripts to run in which order. One script hardcodes a file path that no longer exists. Another uses a random seed that you never recorded, so bootstrap confidence intervals will not match the figures in the manuscript. A third script produces slightly different p-values depending on whether you run it before or after another script, because they share a global variable.
+
+This is not a hypothetical scenario. It is the daily reality of computational biology. And it is entirely preventable. Reproducible analysis is not about perfection — it is about structure, documentation, and discipline. Today, you will learn the practices that make "re-run everything" a one-command operation instead of a week of panic.
 
 ## Why Reproducibility Matters
 
-Computational analyses can still be difficult to reproduce when inputs,
-dependencies, parameters, random seeds, or execution order are missing. The
-remedy is to make those details part of the analysis rather than relying on
-memory.
+On Day 1, we discussed the reproducibility crisis: 89% of landmark cancer biology studies could not be replicated. Computational analyses are theoretically easier to reproduce than wet-lab experiments — you have all the inputs and instructions. Yet in practice, computational reproducibility is shockingly rare.
+
+A 2019 study attempted to reproduce analyses from 204 published bioinformatics papers. Only 14% could be reproduced from the provided code and data. The failures were rarely due to errors in logic — they were due to missing files, undocumented dependencies, hardcoded paths, unrecorded random seeds, and ambiguous analysis steps.
 
 Journals increasingly require:
 - **Code availability**: deposit analysis scripts in a public repository
@@ -441,10 +444,9 @@ Literate analysis interleaves code, results, and narrative explanation in a sing
 let pca_result = pca(log_cpm)
 scatter(pca_result.scores[0], pca_result.scores[1])
 
-# Result: Sample S14 is a clear outlier on PC1 (3.8 SD from centroid).
-# Decision: Remove S14 from downstream analysis.
-# Justification: S14 had the lowest library size (2.1M reads vs
-# median 15.3M) and highest duplication rate (82%).
+# Do not paste an imagined result here. Record the measured sample identifier,
+# distance, library-size/duplication evidence, and a predeclared action after
+# this code has run. A PCA distance alone does not justify sample removal.
 ```
 
 > **Key insight:** Every decision in an analysis (removing a sample, choosing a threshold, selecting a normalization method) should be documented with a justification. Six months later, neither you nor a reviewer will remember why you chose FDR < 0.05 instead of 0.01.
@@ -539,8 +541,8 @@ print("\nGroup A: " + str(summary(a)))
 print("Group B: " + str(summary(b)))
 
 # --- Normality Check (visual) ---
-qq_plot(a, {title: "Q-Q Plot — Group A"})
-qq_plot(b, {title: "Q-Q Plot — Group B"})
+normal_qq_plot(a, {title: "Q-Q Plot — Group A"})
+normal_qq_plot(b, {title: "Q-Q Plot — Group B"})
 
 # --- Primary Analysis ---
 let tt = ttest(a, b)

@@ -1,16 +1,18 @@
-# Day 9: Rank-Based Comparisons
+# Day 9: When Normality Fails — Non-Parametric Tests
 
-## Practical question
+> **Start here**
+> - **In one sentence:** Rank-based tests compare ordering patterns instead of relying directly on measured distances.
+> - **Look for:** overlap, ordering, ties, outliers, and whether paired observations remain paired.
+> - **Use this when:** the rank-based question matches the scientific target, especially for ordinal or strongly skewed data.
+> - **Do not conclude:** that these tests are assumption-free or are simply t-tests for non-normal data.
 
-**Synthetic teaching data:** relative-abundance measurements are concentrated
-near zero with a long right tail. A mean may not describe the typical sample
-well. Can a rank-based comparison answer a useful group question without
-requiring a normal model for the raw values?
+## The Problem
 
-Rank-based methods reduce sensitivity to extreme magnitudes, but they are not
-assumption-free and do not automatically test a difference in medians. The
-study design, independence, distribution shapes, ties, and the scientific
-question still matter.
+Dr. Maria Gonzalez studies the gut microbiome in inflammatory bowel disease (IBD). She has 16S rRNA sequencing data from 15 IBD patients and 15 healthy controls, measuring the relative abundance of *Faecalibacterium prausnitzii*, a key anti-inflammatory bacterium. Looking at the data, she sees a mess: most values cluster near zero, a few patients have moderate levels, and one healthy individual has an enormous abundance of 45%. The histogram looks nothing like a bell curve — it is right-skewed with a long tail.
+
+She runs a Shapiro-Wilk test on each group: both return p < 0.001, evidence against an exact normal model. That result alone does not choose the analysis. She must decide whether her estimand is a difference in means, ranks, medians under additional assumptions, or entire distributions; she must also respect independence, ties, zeros, and the experimental unit.
+
+Many **rank-based tests** operate on ordering rather than the raw distances between values. They can reduce the influence of extreme magnitudes, but they still have assumptions about exchangeability, independence, pairing, continuity/ties, and what a distributional shift means.
 
 ## What Are Non-Parametric Tests?
 
@@ -20,14 +22,14 @@ Non-parametric tests replace raw data values with their **ranks** (1st smallest,
 
 | Property | Parametric (t-test) | Non-parametric (rank-based) |
 |---|---|---|
-| Uses a normal-model assumption | Often | No normal model for raw values |
-| Sensitive to extreme magnitudes | More | Less |
+| Exact normal model used in the classical derivation | Yes | No |
+| Sensitivity to extreme magnitudes | Can be high | Usually lower after ranking |
 | Uses raw values | Yes | Uses ranks |
 | Power (normal data) | Highest | Slightly lower (~95%) |
-| Performance on non-normal data | Depends on design and sample size | Often useful, but still assumption-dependent |
+| Power away from normality | Depends on shape, n, and estimand | Depends on shape, ties, n, and estimand |
 | Handles ordinal data | No | Yes |
 
-> **Key insight:** Non-parametric tests are not "worse" versions of parametric tests. They are the correct choice when distributional assumptions are violated. Using a t-test on heavily skewed data is like measuring temperature with a ruler — you might get a number, but it doesn't mean anything.
+> **Key insight:** Rank-based tests are not automatic fallbacks for every non-normal histogram. Choose them when their rank or distribution estimand answers the biological question, and state what equality under the null means. A mean-based model, transformation, permutation method, quantile model, or count model may answer a different and more relevant question.
 
 <div style="text-align: center; margin: 2em 0;">
 <svg width="680" height="300" viewBox="0 0 680 300" xmlns="http://www.w3.org/2000/svg" style="background: #fafbfc; border: 1px solid #e5e7eb; border-radius: 8px;">
@@ -56,19 +58,19 @@ Non-parametric tests replace raw data values with their **ranks** (1st smallest,
   <text x="475" y="238" text-anchor="middle" font-size="10" fill="#f59e0b">mean</text>
   <!-- Outlier annotation -->
   <text x="590" y="210" font-size="9" fill="#dc2626">rare high values</text>
-  <text x="510" y="260" text-anchor="middle" font-size="10" fill="#dc2626" font-weight="bold">t-test unreliable!</text>
-  <text x="510" y="275" text-anchor="middle" font-size="10" fill="#16a34a" font-weight="bold">Use Mann-Whitney</text>
+  <text x="510" y="260" text-anchor="middle" font-size="10" fill="#dc2626" font-weight="bold">mean may hide the shape</text>
+  <text x="510" y="275" text-anchor="middle" font-size="10" fill="#16a34a" font-weight="bold">Choose the estimand first</text>
 </svg>
 </div>
 
 ## When to Choose Non-Parametric
 
-Use non-parametric tests when:
-- **Shapiro-Wilk** rejects normality (p < 0.05) and sample size is small
+Consider a rank-based method when:
+- Ordering or a broad distributional comparison answers the scientific question
 - Data are **ordinal** (pain scale 1-10, tumor grade I-IV)
-- Data have **heavy outliers** that cannot be removed
-- **Sample sizes are very small** (n < 10 per group)
-- Data are **bounded** or have floor/ceiling effects (many zeros)
+- Valid extremes make raw magnitudes a poor basis for the intended comparison
+- The randomization/exchangeability structure supports the chosen test
+- Ties, bounds, floor/ceiling effects, and small-sample discreteness have been handled explicitly
 
 ## The Rank Transformation
 
@@ -293,8 +295,8 @@ let healthy = [2.1, 5.4, 1.8, 8.2, 3.5, 12.1, 4.7, 6.3, 2.9, 45.0,
 
 # First, demonstrate why t-test is inappropriate
 # Check normality visually — both distributions are right-skewed
-qq_plot(ibd, {title: "QQ Plot: IBD"})
-qq_plot(healthy, {title: "QQ Plot: Healthy"})
+normal_qq_plot(ibd, {title: "QQ Plot: IBD"})
+normal_qq_plot(healthy, {title: "QQ Plot: Healthy"})
 print("Both groups are heavily skewed — normality violated!\n")
 
 # Mann-Whitney U test (non-parametric)
@@ -324,7 +326,7 @@ let after  = [120, 12, 340, 22, 28, 450,  35,  65, 10, 210, 42,  890]
 
 # Normality check on differences
 let diffs = zip(before, after) |> map(|p| p[0] - p[1])
-qq_plot(diffs, {title: "QQ Plot: Paired Differences"})
+normal_qq_plot(diffs, {title: "QQ Plot: Paired Differences"})
 print("Differences are non-normal -> use Wilcoxon signed-rank\n")
 
 # Wilcoxon signed-rank test
@@ -522,9 +524,9 @@ Generate 1000 simulations where both groups are truly normal with different mean
 - The **Wilcoxon signed-rank** test is the non-parametric alternative to the paired t-test
 - The **Kruskal-Wallis** test extends to three or more groups (non-parametric ANOVA)
 - The **KS test** compares entire distributions, not just central tendency
-- Non-parametric tests have about 95% of the power of parametric tests when data ARE normal, but are far more reliable when data are NOT normal
-- Microbiome data, cytokine levels, survival times, and ordinal scales almost always require non-parametric methods
-- Always check normality first (Shapiro-Wilk, QQ plots) — let the data guide your choice of test
+- Relative power depends on the particular test, alternative, sample size, ties, and distribution; there is no universal 95% rule
+- Microbiome abundance, cytokines, survival outcomes, and ordinal scales need methods matched to their sampling process and estimand; survival data additionally require censoring-aware methods
+- Inspect distributions and model diagnostics, but choose the test from the question and design rather than a normality-test threshold
 
 ## What's Next
 

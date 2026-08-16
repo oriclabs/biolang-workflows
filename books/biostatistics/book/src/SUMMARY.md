@@ -1,7 +1,6 @@
 # Summary
 
 [Introduction](introduction.md)
-- [Fast Review Labs](labs.md)
 
 ---
 
@@ -17,7 +16,7 @@
 
 # Week 2: Core Statistical Methods
 
-- [Day 6: Confidence Intervals — The Range of Truth](day-06.md)
+- [Day 6: Confidence Intervals — An Estimate with Uncertainty](day-06.md)
 - [Day 7: Hypothesis Testing — Asking Precise Questions](day-07.md)
 - [Day 8: Comparing Two Groups — The t-Test](day-08.md)
 - [Day 9: When Normality Fails — Non-Parametric Tests](day-09.md)
@@ -62,3 +61,4 @@
 - [Appendix C: Distribution Reference Card](appendix-distributions.md)
 - [Appendix D: Glossary](appendix-glossary.md)
 - [Appendix E: BioLang Statistics Quick Reference](appendix-reference.md)
+- [Appendix F: Guided Exploration in BioLang](appendix-guided-exploration.md)

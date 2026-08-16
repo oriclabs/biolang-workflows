@@ -1,5 +1,11 @@
 # Day 22: Clustering — Finding Structure in Omics Data
 
+> **Start here**
+> - **In one sentence:** Clustering groups observations according to a chosen definition of similarity.
+> - **Look for:** stability across seeds and settings, silhouette patterns, batch alignment, and independent biological evidence.
+> - **Use this when:** exploring possible subgroups without known labels.
+> - **Do not conclude:** that every returned cluster is a natural population; clustering algorithms can partition noise.
+
 <div class="day-meta">
 <span class="badge">Day 22 of 30</span>
 <span class="badge">Prerequisites: Days 2-3, 13, 21</span>
@@ -7,16 +13,17 @@
 <span class="badge">Unsupervised Learning</span>
 </div>
 
-## Practical question
+## The Problem
 
-**Synthetic teaching data:** 500 samples have expression measurements for many
-genes. Can clustering reveal stable groups, and do those groups correspond to
-independent information that was not used to create them?
+You are part of a cancer genomics consortium. Five hundred tumor samples have been profiled with RNA-seq, measuring the expression of 18,000 genes in each. The pathologist has classified these tumors into three histological subtypes based on what she sees under the microscope. But molecular data often reveals finer distinctions invisible to the eye.
 
-An algorithm can partition data even when no biologically meaningful groups
-exist. Treat clusters as hypotheses. Check stability across preprocessing and
-parameters, then validate with held-out samples, known markers, outcomes, or
-other independent evidence.
+Your task is to explore possible groupings in the gene-expression data without
+using the pathologist's labels to construct them. Agreement with histology can
+be useful supporting evidence. A new grouping is a hypothesis that needs
+replication, marker interpretation, clinical association, and preferably
+functional or external validation before it is called a biological subtype.
+
+But there is a danger lurking. Clustering algorithms always find clusters, even in random noise. The critical question is not "can I find groups?" but "are the groups real?"
 
 ## What Is Clustering?
 
@@ -367,7 +374,10 @@ for k in 2..8 {
 
 ## Clustering Always Finds Clusters — Even in Noise
 
-This is the single most important warning about clustering. Run k-means with k = 3 on completely random data, and it will dutifully return three clusters. The clusters will look somewhat real in a scatter plot. But they are meaningless.
+Here is the central warning about clustering: run k-means with k = 3 on
+simulated unstructured noise and it will still return three partitions. A
+projection may make those partitions look persuasive even though the simulation
+contains no generating subpopulations.
 
 ```bio
 set_seed(42)
@@ -583,4 +593,4 @@ for (k in 2:7) {
 
 ## What's Next
 
-PCA and clustering assume that the data you have is large enough to draw conclusions. But what if your dataset is tiny — six mice per group, far too few to verify normality or trust asymptotic theory? Tomorrow, we meet resampling methods: bootstrap and permutation tests. These techniques let your data speak for itself, building confidence intervals and testing hypotheses without any distributional assumptions, by literally reshuffling the data thousands of times.
+PCA and clustering can be unstable when the dataset is tiny. With six mice per group, distribution diagnostics and asymptotic approximations carry substantial uncertainty. Tomorrow, we meet bootstrap and permutation methods. They approximate uncertainty by resampling, but still rely on representative observations, a correct resampling unit, and exchangeability or other design assumptions.

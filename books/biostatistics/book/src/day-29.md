@@ -1,5 +1,11 @@
 # Day 29: Capstone — Differential Expression Study
 
+> **Start here**
+> - **In one sentence:** Differential-expression analysis estimates gene-level changes while modelling counts, library composition, biological variation, and many simultaneous tests.
+> - **Look for:** sample quality, library size, count distributions, sample relationships, effect sizes, intervals, adjusted p-values, and pathway context.
+> - **Use this when:** comparing bulk RNA-seq expression under a design represented in the count model.
+> - **Do not conclude:** that every adjusted hit is biologically important, causal, or validated in another cohort.
+
 <div class="day-meta">
 <span class="badge">Day 29 of 30</span>
 <span class="badge">Capstone: Days 2-3, 8, 12-13, 20-21, 25</span>
@@ -7,17 +13,13 @@
 <span class="badge">Transcriptomics</span>
 </div>
 
-## Practical question
+## The Problem
 
-**Synthetic teaching project:** a paired 15,000-gene by 12-sample count matrix
-represents six tumour/normal pairs. How do we inspect library size and sample
-structure, preserve the pairing, account for multiple testing, and report
-effect sizes with diagnostic plots?
+You receive an email from a gastroenterology collaborator: "We have RNA-seq data from 12 colon biopsies — 6 from colorectal tumors and 6 from matched normal tissue. We need to identify genes that are differentially expressed between tumor and normal, find pathways that are altered, and generate figures for a manuscript. Can you run the analysis?"
 
-The chapter is a compact statistical teaching workflow, not a production
-RNA-seq protocol. Real analyses require count-aware modelling, appropriate
-normalisation and design matrices, quality control, annotation provenance, and
-independent validation.
+The raw data has already been aligned and quantified. You have a gene-by-sample count matrix: 15,000 genes (rows) by 12 samples (columns). Each entry is the number of sequencing reads mapped to that gene in that sample. The values range from 0 to several hundred thousand.
+
+This is the bread and butter of computational genomics. Every RNA-seq experiment, every cancer study, every drug treatment analysis begins with some version of this pipeline. Today, you will build the complete analysis from scratch, applying methods from nearly every chapter of this book.
 
 ## The Complete DE Pipeline
 
@@ -818,7 +820,7 @@ library(DESeq2)
 library(pheatmap)
 library(EnhancedVolcano)
 
-# DESeq2 workflow (gold standard for RNA-seq DE)
+# DESeq2 workflow (one widely used RNA-seq DE approach)
 dds <- DESeqDataSetFromMatrix(countData = counts,
                                colData = sample_info,
                                design = ~ group)

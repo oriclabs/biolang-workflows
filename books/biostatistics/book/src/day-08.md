@@ -1,14 +1,16 @@
 # Day 8: Comparing Two Groups — The t-Test
 
-## Practical question
+> **Start here**
+> - **In one sentence:** A t-test compares a difference in means with the uncertainty in that difference.
+> - **Look for:** group centres, spread, overlap, unusual values, and paired lines when measurements come from the same unit.
+> - **Use this when:** a mean difference is the scientific target and the independent or paired design is represented correctly.
+> - **Do not conclude:** that a small p-value makes the difference large, useful, causal, or well measured.
 
-**Synthetic teaching data:** expression is measured in paired tumour and nearby
-normal samples from the same 12 individuals. Is the average within-person
-difference distinguishable from ordinary variation, and how large is it?
+## The Problem
 
-The pairing is part of the design, not a software option to choose afterward.
-A paired t-test works with the 12 within-person differences. Independent data,
-unequal variances, or strongly problematic differences require other choices.
+Dr. Sofia Reyes is a cancer biologist studying BRCA1 expression in breast tissue. She has RNA-seq data from 12 tumor samples and 12 matched normal samples from the same patients. The mean BRCA1 expression in tumors is 4.2 log2-CPM versus 6.8 log2-CPM in normals — a 2.6-fold reduction. But with only 12 samples per group and considerable biological variability, can she confidently claim BRCA1 is downregulated in tumors?
+
+She cannot use a z-test because the population standard deviation is unknown — she must estimate it from the data itself. She needs the **t-test**, the most widely used statistical test in biomedical research. But which version? Her samples are paired (tumor and normal from the same patient), which adds another consideration. And before running any test, she should verify that the data meet the test's assumptions.
 
 This chapter covers the t-test in all its forms: independent, Welch's, paired, and one-sample. You will learn when each is appropriate, how to check assumptions, and how to quantify the magnitude of differences with Cohen's d.
 
@@ -20,7 +22,7 @@ Think of it this way: you have two piles of measurements. The t-test weighs how 
 
 **The t-statistic** = (difference in means) / (standard error of the difference)
 
-A larger t-statistic means more evidence of a real difference.
+A larger absolute t-statistic means the estimated mean difference is large relative to its standard error. Its interpretation still depends on the design, assumptions, effect size, and multiplicity.
 
 <div style="text-align: center; margin: 2em 0;">
 <svg width="680" height="320" viewBox="0 0 680 320" xmlns="http://www.w3.org/2000/svg" style="background: #fafbfc; border: 1px solid #e5e7eb; border-radius: 8px;">
@@ -79,7 +81,7 @@ A larger t-statistic means more evidence of a real difference.
 ### Assumptions
 
 1. **Independence**: Observations within and between groups are independent
-2. **Normality**: Data in each group are approximately normally distributed
+2. **Sampling shape**: For small samples, each group's conditional outcomes should not have extreme departures that make mean-based inference unstable; in a paired test, inspect the paired differences
 3. **Equal variances**: Both groups have similar spread (homoscedasticity)
 
 ### The Pooled Standard Error
@@ -94,7 +96,7 @@ Degrees of freedom: **df = n1 + n2 - 2**
 
 Welch's t-test does not assume equal variances. It uses each group's own variance estimate and adjusts the degrees of freedom downward with the Welch-Satterthwaite equation.
 
-> **Key insight:** Welch's t-test is almost always the better default choice. It performs nearly as well as the pooled t-test when variances ARE equal, and much better when they are not. Most modern statistical software (including R's `t.test()`) uses Welch's version by default.
+> **Key insight:** For two independent groups and a difference-in-means estimand, Welch's t-test is a useful default because it does not require equal variances. It still requires independent experimental units and can be unstable with very small, highly skewed, heavy-tailed, or dependent samples. R's `t.test()` uses Welch's version by default.
 
 ## Paired t-Test: Matched Samples
 
@@ -164,7 +166,7 @@ Where d-bar is the mean of the paired differences and s_d is their standard devi
 </svg>
 </div>
 
-> **Common pitfall:** Using an independent t-test on paired data wastes statistical power. If you have natural pairs, always use the paired test. Conversely, using a paired test on unpaired data gives wrong results.
+> **Common pitfall:** Ignoring genuine pairing usually gives the wrong uncertainty and can waste information. Use a paired analysis when the scientific units are correctly matched and the target is a within-pair change; do not manufacture pairs between independent observations.
 
 <div style="text-align: center; margin: 2em 0;">
 <svg width="650" height="360" viewBox="0 0 650 360" xmlns="http://www.w3.org/2000/svg" style="background: #fafbfc; border: 1px solid #e5e7eb; border-radius: 8px;">
@@ -226,11 +228,11 @@ Where d-bar is the mean of the paired differences and s_d is their standard devi
 
 ### Normality: Shapiro-Wilk Test
 
-The Shapiro-Wilk test checks whether data could have come from a normal distribution.
+The Shapiro-Wilk test measures evidence against an exact normal model. It does not certify normality or choose a test.
 
 - H0: Data are normally distributed
-- If p > 0.05, normality assumption is reasonable
-- If p < 0.05, data are significantly non-normal
+- A large p-value means the sample did not provide strong evidence against exact normality; with small n the test may have little power.
+- A small p-value is evidence of a departure, whose practical importance should be judged visually and through sensitivity of the intended analysis.
 
 Also use **QQ plots**: if points fall along the diagonal line, data are approximately normal.
 
@@ -239,12 +241,12 @@ Also use **QQ plots**: if points fall along the diagonal line, data are approxim
 Levene's test checks whether two groups have equal variances.
 
 - H0: Variances are equal
-- If p > 0.05, equal variance assumption is reasonable
-- If p < 0.05, use Welch's t-test (or just always use Welch's)
+- A large p-value does not prove equal variances.
+- For independent groups and a mean difference, Welch's method avoids making equality of variance a prerequisite; also inspect design, group sizes, and influential values.
 
 ## Cohen's d: Quantifying Effect Size
 
-A p-value tells you *whether* a difference exists. Cohen's d tells you *how large* it is, in standard deviation units:
+A p-value measures compatibility with a null model; it does not tell you whether a difference exists. Cohen's d estimates a standardized mean difference, while its confidence interval shows precision:
 
 **d = (x-bar1 - x-bar2) / s_pooled**
 
@@ -255,10 +257,7 @@ A p-value tells you *whether* a difference exists. Cohen's d tells you *how larg
 | 0.8 | Large | Strong phenotypic difference |
 | > 1.2 | Very large | Knockout vs wild-type |
 
-> **Key insight:** A large estimated effect with a wide interval is uncertain;
-> it may shrink, persist, or change direction in new data. A small p-value with
-> a tiny estimated effect may have little biological importance. Interpret the
-> estimate and interval together.
+> **Key insight:** A large p-value with an imprecise, large point estimate is compatible with several effect sizes; inspect its confidence interval and design rather than declaring a hidden real effect. A small p-value with a tiny estimate can indicate a precisely measured but practically unimportant difference. Domain thresholds decide importance.
 
 ## The t-Test in BioLang
 
@@ -310,8 +309,8 @@ if var_ratio > 2.0 or var_ratio < 0.5 {
 }
 
 # 3. QQ plots for visual normality assessment
-qq_plot(tumor, {title: "QQ Plot: Tumor BRCA1 Expression"})
-qq_plot(normal, {title: "QQ Plot: Normal BRCA1 Expression"})
+normal_qq_plot(tumor, {title: "QQ Plot: Tumor BRCA1 Expression"})
+normal_qq_plot(normal, {title: "QQ Plot: Normal BRCA1 Expression"})
 ```
 
 ### Paired t-Test: Before/After Treatment
@@ -458,7 +457,7 @@ Hemoglobin levels (g/dL) in two groups:
 let anemia  = [9.2, 8.8, 10.1, 9.5, 8.3, 9.7, 8.6, 9.0, 10.3, 8.9]
 let healthy = [13.5, 14.2, 12.8, 13.9, 14.5, 13.1, 14.0, 13.6, 12.9, 14.3]
 
-# TODO: 1. Check normality with qq_plot() on each group
+# TODO: 1. Check normality with normal_qq_plot() on each group
 # TODO: 2. Check equal variances by comparing variance() per group
 # TODO: 3. Run the appropriate t-test with ttest()
 # TODO: 4. Compute Cohen's d inline: (mean(a)-mean(b)) / sqrt((variance(a)+variance(b))/2)
@@ -487,7 +486,7 @@ The following data are highly skewed (as often seen in cytokine measurements):
 let treatment = [2.1, 1.8, 45.2, 3.5, 2.9, 1.2, 38.7, 4.1, 2.3, 1.5]
 let control   = [0.8, 0.5, 0.9, 0.3, 1.1, 0.7, 0.4, 0.6, 1.0, 0.2]
 
-# TODO: Test normality with qq_plot()
+# TODO: Test normality with normal_qq_plot()
 # TODO: Run the t-test with ttest() anyway — what does it say?
 # TODO: Try log-transforming the data and re-testing
 # TODO: Preview: tomorrow we'll learn non-parametric alternatives
@@ -501,10 +500,8 @@ let control   = [0.8, 0.5, 0.9, 0.3, 1.1, 0.7, 0.4, 0.6, 1.0, 0.2]
 - Always **check assumptions**: Shapiro-Wilk for normality, Levene's for equal variances, QQ plots for visual inspection
 - **Cohen's d** quantifies effect size independently of sample size: 0.2 = small, 0.5 = medium, 0.8 = large
 - A significant t-test with a small Cohen's d may not be biologically meaningful
-- A non-significant test with a large estimated effect calls for checking the
-  interval, design, data quality, and plausibility—not an automatic decision to
-  collect more samples
+- A non-significant t-test with a large Cohen's d suggests you need more samples
 
 ## What's Next
 
-What happens when your data violate the normality assumption? Cytokine levels, bacterial abundances, and many other biological measurements are wildly skewed. Tomorrow we introduce non-parametric tests — rank-based alternatives to the t-test that make no assumptions about the shape of your data distribution.
+What happens when an exact normal model is a poor approximation? Cytokine levels, bacterial abundances, and many other biological measurements can be strongly skewed. Tomorrow we introduce rank-based alternatives to the t-test. They avoid an exact normal outcome model, but still require a compatible estimand, independence or correct pairing, and careful treatment of ties and sampling design.

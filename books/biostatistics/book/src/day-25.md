@@ -1,5 +1,11 @@
 # Day 25: Statistical Visualization — Plots That Tell the Truth
 
+> **Start here**
+> - **In one sentence:** A statistical plot makes patterns, uncertainty, and data quality visible without hiding the observations that matter.
+> - **Look for:** axes, units, scales, missing values, raw points, uncertainty, group sizes, and visual encodings.
+> - **Use this when:** exploring data, checking a model, or communicating a result to another person.
+> - **Do not conclude:** that an attractive plot is neutral, complete, or proof of a scientific claim.
+
 <div class="day-meta">
 <span class="badge">Day 25 of 30</span>
 <span class="badge">Prerequisites: All previous days</span>
@@ -7,15 +13,13 @@
 <span class="badge">Data Visualization</span>
 </div>
 
-## Practical question
+## The Problem
 
-Two plots can use the same data and lead the eye to different conclusions. Does
-the figure show individual observations, uncertainty, scale, missingness, and
-the comparison actually made? Can readers with common forms of colour-vision
-deficiency distinguish the groups?
+You have spent weeks analyzing a clinical dataset. The results are solid: a survival benefit, a clear dose-response relationship, differentially expressed genes with strong effect sizes. You write up the manuscript, generate figures, and submit.
 
-Visualization is part of the analysis. A plot should reveal the distribution
-and limits of the evidence, not decorate or amplify a preferred conclusion.
+Three weeks later, the reviewer's comments arrive. "Figure 2: bar charts with error bars hide the data distribution. Replace with violin plots or beeswarm plots showing individual data points. Figure 4: the y-axis does not start at zero, exaggerating the effect. Figure 6: red-green color scheme is inaccessible to the 8% of males with color vision deficiency. Major revision."
+
+The statistics were correct. The visualization was not. And in modern publishing, visualization is not decoration — it is evidence. A misleading plot can sink an otherwise excellent paper. A well-designed figure can convey complex results in seconds.
 
 Today is your visualization reference guide. We will cover every major plot type you have encountered in this book, when to use each, how to read them, common mistakes, and how to produce publication-ready versions in BioLang.
 

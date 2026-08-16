@@ -1,5 +1,11 @@
 # Day 24: Bayesian Thinking for Biologists
 
+> **Start here**
+> - **In one sentence:** Bayesian analysis combines a stated prior with the data model to produce an updated posterior distribution.
+> - **Look for:** the prior, likelihood, posterior, credible interval, and how conclusions change under reasonable prior choices.
+> - **Use this when:** prior information and direct probability statements about model parameters are useful and defensible.
+> - **Do not conclude:** that the posterior is assumption-free or automatically true; it depends on the model, prior, and data quality.
+
 <div class="day-meta">
 <span class="badge">Day 24 of 30</span>
 <span class="badge">Prerequisites: Days 4, 6-7</span>
@@ -7,20 +13,30 @@
 <span class="badge">Bayesian Inference</span>
 </div>
 
-## Practical question
+## The Problem
 
-**Synthetic teaching example:** start with a prior distribution for an unknown
-response probability, then observe a number of responses out of a fixed number
-of trials. How should the probability distribution change after seeing the
-data, and what does it predict for a future sample?
+A clinical sequencing lab has found a missense variant in a patient's BRCA2 gene. The patient has a family history of breast cancer. ClinVar classifies the variant as "Uncertain Significance" — VUS. The clinician needs to make a decision: recommend risk-reducing surgery, or watchful waiting?
 
-This chapter uses the beta-binomial model because every step is visible. It
-teaches Bayesian updating; it does not implement clinical variant
-classification and must not be used to recommend patient management.
+You have several pieces of evidence:
+
+1. **Population frequency**: The variant appears in 0.02% of a population database (gnomAD). Pathogenic BRCA2 variants are typically rare, but many rare variants are benign.
+2. **Computational prediction**: Three algorithms (SIFT, PolyPhen, CADD) predict the variant is "likely damaging."
+3. **Functional assay**: A cell-based splicing assay shows mild disruption.
+4. **Family data**: Two of three affected relatives carry the variant (one does not, but that could be a phenocopy).
+
+No single piece of evidence is conclusive. Each is uncertain. But together, they should shift your belief about pathogenicity. How do you combine them?
+
+Bayesian models provide one explicit way to combine prior information with new
+data. Frequentist analyses can also use external information through design,
+constraints, hierarchical models, or prespecified evidence synthesis, but they
+do not interpret parameters through a posterior probability distribution.
 
 ## What Is Bayesian Statistics?
 
-Bayesian statistics treats probability as a measure of belief, not a long-run frequency. Instead of asking "what would happen if I repeated this experiment infinitely many times?" it asks "given what I know, how confident should I be?"
+In Bayesian statistics, probability represents uncertainty conditional on a
+specified model and prior. The practical question becomes: after combining
+those assumptions with the observed data, what does the posterior say about
+the parameter or a future observation?
 
 The fundamental equation is Bayes' theorem:
 
@@ -45,10 +61,11 @@ Where:
 
 The posterior from one analysis becomes the prior for the next — evidence accumulates naturally.
 
-> **Key insight:** Bayesian inference updates a prior distribution with a
-> likelihood to obtain a posterior distribution. Combining heterogeneous
-> clinical evidence requires a justified domain model; the beta-binomial lesson
-> here is not such a model.
+> **Key insight:** Bayesian inference supports sequential updating when each
+> evidence source is represented in a defensible likelihood and dependence is
+> handled correctly. Clinical variant-classification frameworks combine several
+> evidence types, but they should not be treated as independent numerical
+> updates without a validated model.
 
 ## Frequentist vs Bayesian: The Practical Difference
 
@@ -65,10 +82,10 @@ Consider testing whether a new drug reduces blood pressure.
 | Prior knowledge | Not formally incorporated | Explicitly included via priors |
 | Result | p-value, confidence interval | Posterior distribution, credible interval |
 | "95% interval" means | 95% of such intervals would contain the true value | 95% probability the parameter is in this interval |
-| Multiple comparisons | Requires correction (Day 12) | Naturally skeptical with informative priors |
-| Small samples | Unreliable (CLT breaks down) | Works with proper priors |
+| Multiple comparisons | Uses family-wise, FDR, hierarchical, or simultaneous methods | Can use hierarchical priors or explicit decision rules; multiplicity does not vanish automatically |
+| Small samples | Exact or small-sample methods may be available; uncertainty is often wide | Priors can stabilize estimates, but sensitivity to assumptions is often greater |
 
-> **Common pitfall:** A frequentist 95% confidence interval does NOT mean "95% probability the parameter is in this interval." It means "if we repeated the experiment many times, 95% of intervals constructed this way would contain the true value." This distinction confuses almost everyone. The Bayesian credible interval actually does mean what most people think a confidence interval means.
+> **Common pitfall:** A frequentist 95% confidence interval is calibrated by repeated use of its construction procedure; it is not a posterior probability statement about this fixed parameter. A Bayesian 95% credible interval assigns 95% posterior probability under the specified likelihood, prior, and model. That interpretation is conditional on those choices, so prior predictive checks and sensitivity analyses remain important.
 
 <div style="text-align: center; margin: 2em 0;">
 <svg width="680" height="340" viewBox="0 0 680 340" xmlns="http://www.w3.org/2000/svg" style="background: #fafafa; border: 1px solid #e5e7eb; border-radius: 8px;">
@@ -423,9 +440,7 @@ print("Data mean:         " + str(round(data_mean, 3)))
 
 With only 8 observations, the informative priors pull the posterior toward them. With 800 observations, even a badly wrong prior would be overwhelmed by the data.
 
-> **Common pitfall:** With little data, the prior can strongly affect the
-> posterior. A flat prior is not automatically neutral or safe; justify the
-> prior on the model's scale and examine sensitivity to reasonable alternatives.
+> **Common pitfall:** With little data, an informative prior can strongly affect the posterior. Use prior predictive checks and sensitivity analyses, and justify information from external evidence. A nominally "flat" prior is not automatically safe: it can be improper, depend on parameterization, or place implausible mass on scientifically impossible values.
 
 ## Posterior Predictive Distribution
 
@@ -537,10 +552,7 @@ print("Final classification: " +
 )
 ```
 
-> **Scope note:** Clinical variant-classification frameworks combine several
-> evidence types using detailed criteria and expert review. That task is much
-> more complex than the beta-binomial teaching model in this chapter; do not
-> transfer the example's priors or likelihood directly to variant decisions.
+> **Clinical relevance:** The ACMG/AMP variant classification framework (Richards et al., 2015) is implicitly Bayesian. It combines evidence from population data, computational predictions, functional studies, segregation data, and de novo status to classify variants into five tiers (Pathogenic, Likely Pathogenic, VUS, Likely Benign, Benign). Tavtigian et al. (2018) formalized this as an explicit Bayesian framework using likelihood ratios — exactly the approach shown above.
 
 ## When Bayesian Is Better — and When It Is Overkill
 
@@ -556,7 +568,7 @@ print("Final classification: " +
 
 - **No meaningful prior** exists (purely exploratory analysis)
 - **Sample is large** (prior is overwhelmed anyway, results converge)
-- A prespecified framework is required by the study or decision context
+- A protocol, regulator, or decision framework may require a particular estimand and analysis; check the current applicable guidance rather than assuming one statistical philosophy is mandatory
 - **Simplicity matters** (t-test is faster to explain than posterior distributions)
 
 ## Bayesian Thinking in BioLang

@@ -1,5 +1,11 @@
 # Day 5: Sampling, Bias, and Why n Matters
 
+> **Start here**
+> - **In one sentence:** A sample is the small group you measure so you can learn about a larger population.
+> - **Look for:** whether the sampled units resemble the target population, and how estimates vary from sample to sample.
+> - **Use this when:** planning any experiment or deciding how far its result can be generalized.
+> - **Do not conclude:** that a large sample repairs biased sampling, poor measurement, or a confounded design.
+
 <div class="day-meta">
 <span class="badge">Day 5 of 30</span>
 <span class="badge">Prerequisites: Days 1-4</span>
@@ -7,16 +13,15 @@
 <span class="badge">Hands-on</span>
 </div>
 
-## Practical question
+## The Problem
 
-**Synthetic teaching example:** a two-group experiment is being planned. A
-small sample is quicker, but its estimate will vary more from one repetition to
-the next and may miss a modest effect. How do sampling, bias, and sample size
-change what the study can support?
+Dr. Elena Vasquez is the lead biostatistician for a pharmaceutical company. A new immunotherapy drug has shown promising results in cell lines and mouse models. Now the clinical team is designing the Phase II trial and they want her sign-off on the sample size.
 
-There is no universal good sample size. It depends on the effect that matters,
-expected variation, study design, error rates, missingness, and available
-resources. Day 18 shows the corresponding power calculation.
+The clinical lead proposes 20 patients per arm — treatment and placebo. "It's faster, cheaper, and we can get to Phase III sooner," he argues. Elena runs the numbers and shakes her head. With 20 patients per arm and the expected effect size, the trial has only a 23% chance of detecting the drug's benefit even if it truly works. That means a 77% chance of concluding the drug is ineffective when it actually saves lives.
+
+She recommends 200 patients per arm. The clinical lead winces at the cost — $12 million more and 18 extra months of enrollment. But Elena is firm: "Would you rather spend $12 million now and know the answer, or spend $50 million on a Phase III that was doomed from the start because Phase II was too small to see the signal?"
+
+This tension — between the cost of collecting more data and the cost of drawing wrong conclusions from too little — is the central drama of experimental design. Today you will understand why sample size is not a bureaucratic detail but the most consequential decision in any study.
 
 ## What Are Populations and Samples?
 
@@ -102,9 +107,7 @@ The quality of the bridge depends entirely on two factors:
 1. **How the sample was selected** (bias)
 2. **How large the sample is** (precision)
 
-> **Key insight:** More observations reduce random sampling variation, but they
-> do not remove systematic selection bias. A very large convenience sample can
-> estimate the wrong target precisely.
+> **Key insight:** A large biased sample is worse than a small unbiased one. The 1936 Literary Digest poll surveyed 2.4 million people and predicted Alf Landon would win the presidential election in a landslide. George Gallup surveyed 50,000 and correctly predicted Roosevelt. The Literary Digest sample was drawn from telephone directories and automobile registrations — overrepresenting wealthy voters. Size could not compensate for bias.
 
 ## The Sampling Distribution
 
@@ -154,11 +157,14 @@ Two crucial observations:
 
 ## The Central Limit Theorem
 
-The Central Limit Theorem (CLT) is perhaps the single most important result in statistics. It says:
+The Central Limit Theorem (CLT) is a useful result for understanding sample means. In simplified terms, it says:
 
 **Regardless of the shape of the population distribution, the sampling distribution of the mean approaches a normal distribution as sample size increases.**
 
-This is remarkable. The underlying data can be skewed, bimodal, uniform, or any shape at all. As long as you take large enough samples and compute means, those means will be approximately normally distributed.
+This is useful, but conditional. For independent observations with finite
+variance, sample means often become approximately normal as sample size grows.
+How large is "large enough" depends on skewness, tails, dependence, and the
+accuracy needed; no fixed sample size works for every population.
 
 <div style="text-align: center; margin: 2em 0;">
 <svg width="680" height="420" viewBox="0 0 680 420" xmlns="http://www.w3.org/2000/svg" style="background: #fafbfc; border: 1px solid #e5e7eb; border-radius: 8px;">
@@ -257,12 +263,12 @@ histogram(means_n100, {bins: 50, title: "Sample Means, n=100"})
 print(f"n=100 skewness: {skewness(means_n100):.2}")
 
 # Verify normality visually with Q-Q plot
-qq_plot(means_n100, {title: "Q-Q Plot: Sample Means n=100"})
+normal_qq_plot(means_n100, {title: "Q-Q Plot: Sample Means n=100"})
 ```
 
 Watch the skewness drop toward zero as n increases. By n=100, the sampling distribution is indistinguishable from a normal curve, even though the underlying data is wildly skewed.
 
-> **Key insight:** The CLT is why the normal distribution dominates statistics. Even when individual observations are non-normal, means of samples are approximately normal. Since most statistical tests are fundamentally about comparing means, the normal distribution is the right reference distribution for the test statistic — even when the raw data is not normal.
+> **Key insight:** Under suitable conditions, the CLT explains why sampling distributions of sums and means can become approximately normal even when individual observations are not. The approximation depends on sample size, tail behaviour, and dependence. It does not make the raw data normal, and it does not justify a normal reference for every statistic or study design.
 
 ### When Does the CLT "Kick In"?
 
@@ -497,9 +503,7 @@ Typical results:
 | 200 | ~94% | Excellent — high confidence in detecting the effect |
 | 500 | ~99.9% | Virtually certain to detect even subtle effects |
 
-In this simulation, the smaller design misses the chosen effect more often.
-Change the effect size or variability and the power changes, so use values
-justified for the study rather than copying this sample size.
+This is Dr. Vasquez's argument in numbers. With 20 patients per arm, the trial has a 77% chance of producing a false negative — concluding the drug does not work when it does. That is not an experiment; it is a waste of money.
 
 ## The Bootstrap: Estimation Without Formulas
 
@@ -539,7 +543,7 @@ print(f"95% Bootstrap CI: [{ci_lower:.2}, {ci_upper:.2}]")
 histogram(boot_medians, {bins: 50, title: "Bootstrap Distribution of the Median"})
 ```
 
-> **Key insight:** The bootstrap treats your sample as a stand-in for the population. By resampling from your sample, you simulate what would happen if you could repeatedly sample from the population. It is remarkably effective even for small samples.
+> **Key insight:** The bootstrap treats the observed sample as a stand-in for the population. It can work well when the sample represents that population and the resampling unit matches the design. With very small or dependent samples, it has little information from which to reconstruct uncertainty.
 
 ## Hands-On: CLT with Allele Frequencies
 
@@ -679,9 +683,9 @@ set_seed(42)
 let n = 40
 let gene_expr = rnorm(n, 5.0, 2.0)
 let noise = rnorm(n, 0, 1.5)
-let protein_abundance = gene_expr |> map(|x| 0.7 * x) |> zip(noise) |> map(|pair| pair.0 + pair.1)
+let protein = gene_expr |> map(|x| 0.7 * x) |> zip(noise) |> map(|pair| pair.0 + pair.1)
 
-let observed_r = cor(gene_expr, protein_abundance)
+let observed_r = cor(gene_expr, protein)
 print(f"Observed correlation: {observed_r:.3}")
 
 # TODO: Bootstrap the correlation 5000 times
@@ -706,13 +710,13 @@ set_seed(42)
 ## Key Takeaways
 
 - **Population vs. sample:** You study a sample to learn about a population. The quality of inference depends on sample size and sampling method.
-- The **sampling distribution** is the distribution of a statistic computed from repeated samples. It is narrower than the data distribution and centered at the true value.
-- The **Central Limit Theorem** guarantees that sample means are approximately normal regardless of the population distribution, given sufficient sample size. This is why normal-based tests work so broadly.
-- **Standard error (SE = SD/&radic;n)** quantifies the precision of your estimate. Quadrupling n halves the SE.
+- The **sampling distribution** describes how a statistic would vary across repeated samples from the same process. Its centre and width depend on the estimator and design.
+- Under suitable independence and finite-variance conditions, the **Central Limit Theorem** explains why the sampling distribution of a mean often becomes approximately normal as sample size grows. Heavy tails, dependence, and small samples can make the approximation poor.
+- For an independent sample mean, **standard error** is estimated by SD/&radic;n. Quadrupling n then halves this estimated SE; clustered or dependent data need a design-aware calculation.
 - **Bias** (selection, survivorship, ascertainment, measurement, publication) is a systematic distortion that cannot be fixed by increasing n. Identify and prevent bias at the design stage.
 - **Statistical power** is the probability of detecting a real effect. Underpowered studies waste resources and miss real effects. The four determinants of power are effect size, sample size, variability, and significance threshold.
-- The **bootstrap** provides empirical estimates of standard errors and confidence intervals for any statistic, without relying on distributional assumptions.
+- The **bootstrap** can estimate uncertainty for many statistics when the resampling scheme represents how the data were collected. It still relies on representative data and a correct resampling unit.
 
 ## What's Next
 
-You have now completed the foundations. You know how to summarize data (Day 2), understand its distributional shape (Day 3), reason about probabilities (Day 4), and appreciate the central role of sample size and sampling variability (Day 5). Starting next week, we put these foundations to work. Day 6 introduces **confidence intervals** — the formal framework for saying "I'm 95% sure the true value lies between here and here." You will see how the standard error you learned today transforms into a rigorous statement about uncertainty, and why confidence intervals are more informative than p-values alone. The testing begins.
+You have now completed the foundations: summaries, distributional shape, probability, sampling, and precision. Day 6 introduces **confidence intervals**—procedures designed to capture a target parameter at a stated long-run rate. You will connect standard error to interval width and learn to read an estimate together with its uncertainty.

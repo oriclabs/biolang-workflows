@@ -1,14 +1,16 @@
 # Day 10: Comparing Many Groups — ANOVA and Beyond
 
-## Practical question
+> **Start here**
+> - **In one sentence:** ANOVA compares differences among group means with the ordinary variation inside the groups.
+> - **Look for:** group centres, within-group spread, overlap, and the observations behind every summary.
+> - **Use this when:** comparing a continuous outcome across three or more groups under an appropriate design.
+> - **Do not conclude:** that a significant overall test identifies which groups differ; that needs planned contrasts or follow-up comparisons.
 
-**Synthetic teaching data:** tumour volume is measured after four dose levels,
-with independent experimental units in each group. Do any group means differ?
+## The Problem
 
-Running every pairwise t-test without adjustment increases the chance of a
-false positive across the family of comparisons. ANOVA first tests a single
-overall question. If that test supports differences, a planned contrast or an
-adjusted post-hoc comparison identifies where they occur.
+Dr. James Park's oncology team is testing a new targeted therapy at four dose levels: 0 mg (placebo), 25 mg, 50 mg, and 100 mg. Each group has 8 mice, and after 4 weeks they measure tumor volume in cubic millimeters. The team lead suggests: "Just do t-tests between all pairs of doses — that's 6 comparisons, no big deal."
+
+But Dr. Park knows this is a trap. With 6 independent tests at alpha = 0.05, the probability of at least one false positive is not 5% — it is 1 - (0.95)^6 = 26.5%. Run 10 comparisons and it climbs to 40%. With 20,000 genes, the problem becomes catastrophic (we will tackle that on Day 12). The solution for comparing several groups at once is **Analysis of Variance** — ANOVA — which tests all groups simultaneously in a single, principled framework.
 
 ANOVA has been the workhorse of experimental biology for nearly a century. Every drug dose-response study, every multi-tissue gene expression comparison, and every agricultural field trial relies on it. Today you will learn why it works, when it fails, and what to do after you get a significant result.
 
@@ -181,7 +183,7 @@ ANOVA controls this by testing all groups in a single hypothesis test.
 
 ### Tukey's Honestly Significant Difference (HSD)
 
-The gold standard post-hoc test. Compares all pairs of group means while controlling the family-wise error rate.
+Tukey HSD is a common choice when the planned goal is to compare every pair of group means while controlling the family-wise error rate.
 
 - Tests all k(k-1)/2 pairwise differences
 - Provides adjusted p-values and confidence intervals
@@ -281,7 +283,7 @@ Just as Cohen's d quantifies the effect for two groups, **eta-squared** quantifi
 
 | Parametric | Non-Parametric | Use When |
 |---|---|---|
-| One-way ANOVA | Kruskal-Wallis | Groups are independent, normality violated |
+| One-way ANOVA | Kruskal-Wallis | Groups are independent and a rank/distribution comparison answers the question |
 | Repeated measures ANOVA | Friedman test | Same subjects measured under all conditions |
 
 ## ANOVA in BioLang
@@ -363,10 +365,10 @@ let stage_III = [35.2, 88.1, 42.5, 120.0, 55.3, 78.9, 95.2, 48.7, 110.5, 65.8]
 
 # Check normality
 # Visual normality check — all stages are right-skewed
-qq_plot(stage_I, {title: "QQ: Stage I"})
-qq_plot(stage_II, {title: "QQ: Stage II"})
-qq_plot(stage_III, {title: "QQ: Stage III"})
-print("Normality violated -> use Kruskal-Wallis (anova on ranks)\n")
+normal_qq_plot(stage_I, {title: "QQ: Stage I"})
+normal_qq_plot(stage_II, {title: "QQ: Stage II"})
+normal_qq_plot(stage_III, {title: "QQ: Stage III"})
+print("The groups are skewed; compare estimands and diagnostics before choosing a model.\n")
 
 let result = anova([stage_I, stage_II, stage_III])
 print("=== Kruskal-Wallis Test ===")
@@ -427,7 +429,7 @@ print("=== Assumption Checks ===")
 print(f"Variances: T-reg={variance(t_reg):.3}, T-eff={variance(t_eff):.3}, B cell={variance(b_cell):.3}, NK={variance(nk):.3}")
 # Visual normality check
 for name, data in [["T-reg", t_reg], ["T-eff", t_eff], ["B cell", b_cell], ["NK", nk]] {
-  qq_plot(data, {title: "QQ Plot: {name}"})
+  normal_qq_plot(data, {title: "QQ Plot: {name}"})
 }
 
 # Step 2: ANOVA
@@ -573,12 +575,12 @@ let intense  = [155, 172, 148, 180, 162]
 
 - **Multiple t-tests** inflate the false positive rate — the family-wise error rate grows rapidly with the number of comparisons
 - **ANOVA** tests whether any group differs from the others in a single F-test, controlling the overall error rate
-- The **F-statistic** compares between-group variance to within-group variance: F much greater than 1 suggests real differences
+- The **F-statistic** compares between-group variation with within-group variation; a large value is evidence against the equal-means null under the model
 - A significant ANOVA tells you "at least one group differs" — use **Tukey HSD** post-hoc to find which pairs differ
 - **Eta-squared** measures effect size: the proportion of total variance explained by group membership
-- **Kruskal-Wallis** is the non-parametric alternative when normality is violated
+- **Kruskal-Wallis** compares group rank distributions; interpreting it as a location shift needs similarly shaped distributions
 - **Friedman test** handles repeated measures designs non-parametrically
-- Always check assumptions (normality, equal variances) before interpreting ANOVA results
+- Check independence, variance structure, residual diagnostics, influential observations, and the estimand before interpreting ANOVA results
 
 ## What's Next
 

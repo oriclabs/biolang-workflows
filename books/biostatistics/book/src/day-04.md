@@ -1,5 +1,11 @@
 # Day 4: Probability — Quantifying Uncertainty
 
+> **Start here**
+> - **In one sentence:** Probability expresses uncertainty on a scale from impossible to certain.
+> - **Look for:** the event being discussed, its reference population, the time period, and whether probabilities are conditional.
+> - **Use this when:** reasoning about inheritance, diagnosis, risk, sampling, or uncertain future outcomes.
+> - **Do not conclude:** that a population probability predicts exactly what will happen to one person.
+
 <div class="day-meta">
 <span class="badge">Day 4 of 30</span>
 <span class="badge">Prerequisites: Days 1-3</span>
@@ -7,21 +13,13 @@
 <span class="badge">Hands-on</span>
 </div>
 
-> **Fast review:** The [runnable normal-distribution
-> lab](downloads/normal-distribution-lab.bln) demonstrates probability as area
-> and checks cumulative and inverse-cumulative calculations in BioLang.
+## The Problem
 
-## Practical question
+Maria and David sit in a genetic counselor's office. The air is still. Maria has just learned she carries a pathogenic BRCA1 mutation — a variant that dramatically increases lifetime risk of breast and ovarian cancer. They are planning to start a family and they need answers.
 
-**Synthetic teaching example:** for an autosomal-dominant variant carried by
-one parent, what is the probability that a child inherits the variant? How does
-that inheritance probability differ from disease risk, and how does a test
-result update a probability?
+What is the probability their child inherits the mutation? If the child inherits it, what is the probability she develops breast cancer by age 70? They are considering preimplantation genetic testing — if the test says the embryo is mutation-free, how confident can they be? The counselor pulls out a notepad and begins writing probabilities.
 
-The calculations illustrate conditional probability. Real genetic counselling
-also depends on the exact variant, penetrance evidence, family history, test
-performance, and professional guidance; the teaching numbers here are not
-clinical advice.
+This is not an abstract exercise. These numbers will determine whether Maria and David proceed with natural conception, pursue IVF with genetic screening, or consider adoption. The difference between a 50% risk and a 5% risk changes lives. Understanding how to compute, combine, and interpret probabilities is not just statistics — in genetics, it is clinical care.
 
 ## What Is Probability?
 
@@ -123,8 +121,8 @@ This is where most people's intuition breaks down, because **P(A|B) is not the s
 
 ### The Critical Distinction
 
-- P(positive test | condition present) is the test's sensitivity.
-- P(condition present | positive test) is the positive predictive value.
+- P(cancer | BRCA1 mutation) &asymp; 0.72 — If you carry BRCA1, your lifetime breast cancer risk is about 72%.
+- P(BRCA1 mutation | cancer) &asymp; 0.05 — If you have breast cancer, the probability it is due to BRCA1 is only about 5%.
 
 These are completely different numbers answering completely different questions. Confusing them is called the **inverse probability fallacy**, and it has real consequences in medicine, law, and genetics.
 
@@ -132,10 +130,7 @@ These are completely different numbers answering completely different questions.
 
 In forensic genetics, the prosecutor's fallacy works like this: "The probability of this DNA match occurring by chance is 1 in 10 million. Therefore, the probability the defendant is innocent is 1 in 10 million."
 
-This is logically wrong. P(match | innocent) is not P(innocent | match). The
-latter also depends on the relevant population, how the person was selected,
-other evidence, and the possibility of laboratory or identification error. A
-match probability alone cannot provide a probability of guilt or innocence.
+This is logically wrong. P(match | innocent) is not P(innocent | match). In a city of 8 million people, you would expect roughly one other person to match by chance. If the only evidence is the DNA match, the probability of innocence might be closer to 50%, not 1 in 10 million.
 
 The same fallacy appears in genetic testing: "The test is 99% accurate" does not mean a positive result is 99% likely to be correct. The answer depends on how common the condition is — which brings us to Bayes' theorem.
 
@@ -206,8 +201,8 @@ In words: the probability of A given B equals the probability of B given A, time
 </svg>
 </div>
 
-This synthetic diagnostic-test calculation is a useful application of Bayes'
-theorem. Work through the counts as well as the formula.
+Diagnostic testing is a practical application of Bayes' theorem because it
+shows clearly how prevalence changes the meaning of a positive result.
 
 **Setup:**
 - A genetic disease has a prevalence of 1 in 1,000 (P(disease) = 0.001)
@@ -240,9 +235,7 @@ How can a "99% accurate" test give such a low positive predictive value? Because
 
 PPV = 99 / 5,094 = 1.94%. The false positives overwhelm the true positives.
 
-> **Practical relevance:** Positive predictive value depends on prevalence and
-> test performance. Screening and confirmation policies are test- and
-> programme-specific; the synthetic values here do not define a clinical rule.
+> **Clinical relevance:** Screening a rare condition can produce many false-positive results even when sensitivity and specificity look impressive. Whether confirmation is required depends on the test, clinical pathway, harms, and governing guidance; PPV makes that decision easier to reason about.
 
 ### Bayes in BioLang
 
@@ -442,7 +435,7 @@ print(f"Deviation from HWE: {if chi2 > 3.84 then "Significant" else "Not signifi
 
 ## Carrier Probability Calculations
 
-Return to the synthetic inheritance example:
+Returning to Maria and David's consultation:
 
 ```bio
 # Genetic counseling probability calculator
@@ -602,13 +595,10 @@ let error_rate = 0.01
 - **Probability** quantifies uncertainty on a 0-to-1 scale. It is the mathematical language of statistics.
 - The **addition rule** handles "or" questions; the **multiplication rule** handles "and" questions. Whether events are mutually exclusive or independent changes the formula.
 - **Conditional probability** P(A|B) is NOT the same as P(B|A). Confusing them is the source of the prosecutor's fallacy and misinterpretation of diagnostic tests.
-- **Bayes' theorem** is the bridge from P(B|A) to P(A|B). It shows that a positive test for a rare disease usually means the patient is healthy — the positive predictive value depends critically on prevalence.
+- **Bayes' theorem** is the bridge from P(B|A) to P(A|B). For rare conditions, even a useful test can produce many false-positive results, so positive predictive value depends strongly on prevalence and test performance.
 - In genetics, probability models like **Hardy-Weinberg equilibrium** and **Mendelian inheritance** translate directly into binomial probability calculations.
-- Always compute both **PPV and NPV** when interpreting diagnostic or screening tests. Sensitivity and specificity alone are insufficient.
+- Report **PPV and NPV** for the relevant prevalence when interpreting a diagnostic or screening test; sensitivity and specificity answer different questions.
 
 ## What's Next
 
-Today you learned to compute probabilities for individual events. Day 5 asks
-how estimates change across samples and why sample size must be planned from
-the effect, variability, design, and intended analysis rather than copied from
-a rule of thumb.
+Tomorrow, Day 5 connects probability to sampling. You will see when averages from repeated samples become more regular, how sample size affects precision, and why power depends on the effect, variability, design, analysis, and error threshold—not on one universal minimum sample size.

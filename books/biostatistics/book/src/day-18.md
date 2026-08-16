@@ -1,15 +1,22 @@
 # Day 18: Experimental Design and Statistical Power
 
-## Practical question
+> **Start here**
+> - **In one sentence:** Power is the chance that a planned analysis detects a chosen meaningful effect when that effect truly exists.
+> - **Look for:** the effect worth detecting, expected variability, sample size, allocation, dropout, and the planned error threshold.
+> - **Use this when:** designing a study before data collection or explaining what effects a completed study could reliably detect.
+> - **Do not conclude:** that 80% power means an obtained result has an 80% chance of being true.
 
-An RNA-seq comparison needs enough independent biological replicates to detect
-an effect that matters. Copying the sample size from another study ignores
-differences in variability, design, sequencing depth, effect size, and analysis
-method. How should the sample size be justified before data collection?
+## The Problem
 
-**Statistical power** is the probability that a specified procedure detects a
-specified effect under explicit assumptions. It is a planning tool, not a
-guarantee and not a universal threshold for every gene.
+Dr. Ana Reyes is a junior PI writing her first R01 grant. She proposes a study comparing gene expression between psoriatic skin and normal skin using RNA-seq, planning **3 samples per group** because "that's what the lab down the hall used."
+
+The grant comes back with this reviewer comment:
+
+> *"The proposed sample size of n=3 per group is inadequate. The applicant provides no power analysis to justify this number. With 3 replicates, the study is severely underpowered to detect anything less than a 4-fold change, which is biologically unrealistic for most genes. We recommend at least 8-10 biological replicates per condition based on published power analyses for RNA-seq DE studies."*
+
+Grant rejected. Six months of proposal writing, wasted — because she didn't plan the sample size.
+
+**Statistical power** determines whether your study can actually detect the effect you're looking for. Getting it wrong wastes time, money, animals, and patient samples.
 
 ## What Is Statistical Power?
 
@@ -281,9 +288,10 @@ An underpowered study is not just a failed study — it's actively harmful:
 3. **False negatives:** Real treatments or biomarkers get abandoned
 4. **Ethical cost:** Patients enrolled in clinical trials with no realistic chance of detecting a benefit
 
-> **Practical relevance:** Many protocols and funders require a justified sample
-> size. Requirements depend on the study type and jurisdiction; document the
-> assumptions, target effect, error rates, attrition, and analysis method.
+> **Clinical relevance:** Confirmatory trial protocols commonly justify sample
+> size and operating characteristics under applicable guidance. Requirements
+> vary by study and jurisdiction. A useful justification states the target
+> effect, variability, error rates, dropout, analysis, and assumptions.
 
 ## Experimental Design in BioLang
 
@@ -631,9 +639,9 @@ Simulate 100 "studies" with n=10 per group and a true small effect (d=0.3). Show
 - For RNA-seq: n=3 is barely adequate (detects >4-fold), n=8 is good (2-fold), n=12+ is ideal (1.5-fold)
 - **Paired designs** dramatically increase power by removing between-subject variability
 - The **winner's curse**: underpowered studies that happen to be significant overestimate the true effect
-- Always use **conservative** effect size estimates and add buffer for dropout/QC failures
+- Base the target effect on biological or clinical importance, use defensible variability estimates, and allow explicitly for expected dropout or QC loss
 - Power curves visualize the sample size / power trade-off and help identify the sweet spot
 
 ## What's Next
 
-Statistical significance tells you whether an effect is real, but not whether it **matters**. Day 19 introduces **effect sizes** — Cohen's d, odds ratios, relative risk — and the critical distinction between statistical significance and practical importance.
+Statistical significance measures incompatibility with a specified null model; it does not establish that an effect is real or important. Day 19 introduces **effect sizes** — Cohen's d, odds ratios, relative risk — and the critical distinction between statistical evidence, magnitude, precision, and practical importance.

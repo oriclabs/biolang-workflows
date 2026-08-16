@@ -1,16 +1,16 @@
 # Day 11: Categorical Data — Chi-Square and Fisher's Exact
 
-## Practical question
+> **Start here**
+> - **In one sentence:** Categorical tests compare observed counts with the counts expected under a stated no-association model.
+> - **Look for:** which table cells differ most from expectation and whether any expected counts are small.
+> - **Use this when:** the data are counts of independent units in categories, with paired designs handled separately.
+> - **Do not conclude:** that association proves causation or that percentages can be analysed without their denominators.
 
-**Synthetic teaching data:** in 500 cases, 180 carry an allele; in 500 controls,
-120 carry it. These are counts in categories. Is allele status associated with
-case-control status, how large is the association, and are expected counts
-large enough for a chi-square approximation?
+## The Problem
 
-When data are counts in categories — disease yes/no, genotype AA/AG/GG, or
-response/non-response — use methods designed for categorical data. The
-chi-square test and Fisher's exact test answer related questions under
-different conditions; an odds ratio or risk difference describes magnitude.
+Dr. Elena Vasquez is an epidemiologist studying the genetics of Alzheimer's disease. She genotypes a SNP near the APOE gene in 1,000 participants: 500 with Alzheimer's and 500 age-matched controls. Among Alzheimer's patients, 180 carry at least one copy of the risk allele. Among controls, 120 carry it. The numbers look different — 36% versus 24% — but these are proportions, not measurements on a continuous scale. She cannot compute a mean or standard deviation. She cannot run a t-test.
+
+When your data are counts in categories — disease yes/no, genotype AA/AG/GG, response/non-response — you need tests designed for categorical data. The chi-square test and Fisher's exact test are the workhorses. They also underpin some of the most important calculations in genetics: Hardy-Weinberg equilibrium, odds ratios for case-control studies, and allelic association tests.
 
 This chapter covers the full toolkit for analyzing categorical data, from contingency tables to effect size measures like odds ratios and Cramer's V.
 
@@ -97,12 +97,10 @@ The chi-square statistic measures how far the observed counts deviate from what 
 ### Assumptions
 
 - Observations are independent
-- Expected counts are adequate for the chosen chi-square approximation
+- Expected count in each cell is at least 5 (if not, use Fisher's exact test)
 - Sample is reasonably large
 
-> **Common pitfall:** Rules such as "every expected count must be at least 5"
-> are rough diagnostics, not universal laws. Inspect expected counts and table
-> structure; for a small 2x2 table, Fisher's exact test is one available method.
+> **Common pitfall:** The chi-square test requires *expected* counts of at least 5 in each cell, not *observed* counts. Check expected counts before interpreting results. When they are too small, Fisher's exact test is the safe alternative.
 
 ## Chi-Square Goodness of Fit: Hardy-Weinberg
 
@@ -154,19 +152,22 @@ If observed genotype counts deviate significantly from HWE expectations, it may 
 
 ## Fisher's Exact Test
 
-For a 2x2 table with small counts, Fisher's exact test computes a conditional
-probability using the hypergeometric distribution and avoids relying on the
-large-sample chi-square approximation.
+When sample sizes are small or expected counts fall below 5, the chi-square approximation is unreliable. Fisher's exact test computes the exact probability using the hypergeometric distribution.
 
-Fisher's exact test is computationally expensive for large tables but is the gold standard for 2x2 tables with small counts — common in rare variant studies and pilot experiments.
+Fisher's exact test is a common exact conditional analysis for a 2x2 table with
+small counts. Its conditioning and sampling assumptions should match the
+design; other exact or model-based analyses may target a different question.
 
-> **Practical relevance:** Fisher's exact test is useful for small 2x2 tables
-> when a chi-square approximation is doubtful. The full analysis plan may also
-> need effect estimates, intervals, repeated-event handling, and multiplicity.
+> **Clinical relevance:** Rare adverse-event tables often need exact or
+> small-sample methods. The prespecified protocol and applicable regulatory
+> guidance determine the analysis; one test is not automatically preferred in
+> every setting.
 
 ## McNemar's Test: Paired Categorical Data
 
-When observations are paired — the same patients tested before and after treatment, or the same samples tested with two diagnostic methods — McNemar's test is the correct choice.
+For paired binary observations—such as the same patients before and after, or
+the same samples measured by two methods—McNemar's test compares the two kinds
+of discordant pair under its matched-pair assumptions.
 
 | | Test B Positive | Test B Negative |
 |---|---|---|
@@ -307,7 +308,7 @@ print("Observed: 8/200 cases vs 2/200 controls carry the variant\n")
 let chi_result = chi_square(observed, [5.0, 195.0, 5.0, 195.0])
 print(f"Chi-square p-value: {chi_result.p_value:.4} (unreliable — low expected counts)")
 
-# Fisher's exact is the correct choice
+# Fisher's exact represents this small 2x2 comparison
 let fisher_result = fisher_exact(8, 192, 2, 198)
 print(f"Fisher's exact p-value: {fisher_result.p_value:.4}")
 
@@ -578,7 +579,4 @@ let populations = ["East Asian", "European", "African"]
 
 ## What's Next
 
-In high-throughput work, many hypotheses are tested together. Under a complete
-null with calibrated p-values, 20,000 tests at 0.05 would yield 1,000 rejections
-on average before correction. Day 12 introduces procedures for controlling an
-error rate across the family.
+You now have a powerful toolkit for individual tests. But in genomics, we never run just one test — we run thousands or millions simultaneously. Testing 20,000 genes means 1,000 false positives at alpha = 0.05. Tomorrow we confront the multiple testing crisis head-on and learn the corrections that make genome-scale analysis possible, culminating in the volcano plot that has become the icon of differential expression analysis.
