@@ -1,9 +1,9 @@
 # BioLang Workflows
 
 Applied, reproducible analyses written in BioLang. This repository contains
-books, courses, notebooks, real-data workflows, benchmarks, and independent
-reference validations. The BioLang compiler, runtime, scientific packages, and
-core algorithms remain in the [BioLang repository](https://github.com/oriclabs/biolang).
+courses, notebooks, real-data workflows, benchmarks, and independent reference
+validations. The BioLang compiler, runtime, scientific packages, and core
+algorithms remain in the [BioLang repository](https://github.com/oriclabs/biolang).
 
 ## Repository boundary
 
@@ -12,17 +12,16 @@ This repository depends on BioLang; BioLang never depends on this repository.
 | This repository | Main BioLang repository |
 |---|---|
 | HBC and other complete analyses | Compiler, runtime, and CLI |
-| Practical learning books | `singlecell` and other package APIs |
+| Practical learning material | `singlecell` and other package APIs |
 | Real-data notebooks | SCTransform Rust implementation |
 | External black-box validation | Unit tests and small conformance fixtures |
 | Generated benchmark reports | Minimal package examples |
 
-Generated books, downloaded datasets, R/Python environments, and validation
+Generated sites, downloaded datasets, R/Python environments, and validation
 results are deliberately not committed.
 
 ## Contents
 
-- `books/`: Practical Bioinformatics, Biostatistics, MSMB, and Single-cell RNA-seq.
 - `courses/`: the HBC course adaptation and its measured validation companion.
 - `examples/`: small runnable BioLang examples organized by domain.
 - `workflows/single-cell/`: complete single-cell scripts and notebooks.
@@ -30,21 +29,9 @@ results are deliberately not committed.
 - `datasets/`: download manifests, checksums, and provenance records only.
 - `benchmarks/`: benchmark definitions; generated measurements are ignored.
 
-## Published books
-
-The BioLang website is the stable reading location; this repository is the
-source of the applied books and courses:
-
-- [Practical Bioinformatics in 30 Days](https://lang.bio/books/practical-bioinformatics/html/)
-- [Practical Biostatistics in 30 Days](https://lang.bio/books/biostatistics/html/)
-- [Modern Statistics for Modern Biology](https://lang.bio/books/msmb/)
-- [Single-Cell RNA-seq with BioLang](https://lang.bio/books/single-cell-rna-seq/html/)
-- [HBC Single-cell Course in BioLang](https://lang.bio/books/hbc-scrnaseq/html/)
-- [HBC-validated single-cell workflow](https://lang.bio/books/hbc-scrnaseq-validated/)
-
 The language reference remains sourced and maintained in the main BioLang
-repository. Book builds write to the ignored `website/books/` directory so
-generated HTML and PDFs never become implementation source.
+repository. Generated HTML and PDFs remain ignored and never become
+implementation source.
 
 ## Use with a released BioLang installation
 
