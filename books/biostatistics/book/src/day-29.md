@@ -315,7 +315,7 @@ for g in 0..len(keep) {
   let normal_vals = norm_expr[g] |> select(6..12)
 
   let log2fc = mean(tumor_vals) - mean(normal_vals)
-  let tt = ttest(tumor_vals, normal_vals)
+  let tt = ttest(tumor_vals, normal_vals, {variance: "welch"})
   # Cohen's d inline
   let pooled_sd = sqrt(((len(tumor_vals) - 1) * pow(stdev(tumor_vals), 2) +
     (len(normal_vals) - 1) * pow(stdev(normal_vals), 2)) /

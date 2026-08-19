@@ -306,7 +306,7 @@ print(f"U statistic: {result.statistic:.1}")
 print(f"p-value: {result.p_value:.2e}")
 
 # Compare to (inappropriate) t-test
-let t_result = ttest(ibd, healthy)
+let t_result = ttest(ibd, healthy, {variance: "welch"})
 print(f"\n(Inappropriate) Welch's t-test p-value: {t_result.p_value:.2e}")
 print(f"Mann-Whitney p-value: {result.p_value:.2e}")
 print("Results may differ substantially with skewed data")
@@ -357,12 +357,12 @@ let ileum   = [1.2, 0.8, 1.5, 0.3, 2.1, 0.9, 1.4, 0.6, 1.8, 0.4]
 let cecum   = [2.5, 3.1, 2.8, 2.2, 3.4, 2.7, 3.0, 2.3, 2.9, 3.2]
 let rectum  = [3.8, 4.2, 3.5, 4.5, 3.9, 4.1, 3.6, 4.3, 3.7, 4.0]
 
-# Kruskal-Wallis: use anova() on rank-transformed data
-let result = anova([ileum, cecum, rectum])
+let result = kruskal_wallis([ileum, cecum, rectum])
 print("=== Kruskal-Wallis Test: Diversity Across Body Sites ===")
-print(f"H statistic: {result.statistic:.4}")
+print(f"H statistic: {result.h_statistic:.4}")
 print(f"p-value: {result.p_value:.2e}")
-print(f"Degrees of freedom: {result.df_between}")
+print(f"Degrees of freedom: {result.df}")
+print(f"Epsilon-squared: {result.epsilon_squared:.3}")
 
 if result.p_value < 0.05 {
   print("\nAt least one body site differs. Running pairwise comparisons...")
@@ -371,8 +371,9 @@ if result.p_value < 0.05 {
   let p2 = wilcoxon(ileum, rectum).p_value
   let p3 = wilcoxon(cecum, rectum).p_value
 
-  # Bonferroni correction for 3 comparisons
-  let adjusted = p_adjust([p1, p2, p3], "bonferroni")
+  # These are separate rank-sum tests with Holm correction. They are labelled
+  # explicitly because they are not Dunn's pooled-rank post-hoc procedure.
+  let adjusted = p_adjust([p1, p2, p3], "holm")
   print(f"Ileum vs Cecum:  p = {adjusted[0]:.4}")
   print(f"Ileum vs Rectum: p = {adjusted[1]:.4}")
   print(f"Cecum vs Rectum: p = {adjusted[2]:.4}")
@@ -411,14 +412,14 @@ set_seed(42)
 print("=== Normal Data: Both Tests Agree ===")
 let norm_a = rnorm(20, 5.0, 1.0)
 let norm_b = rnorm(20, 6.0, 1.0)
-let t_p = ttest(norm_a, norm_b).p_value
+let t_p = ttest(norm_a, norm_b, {variance: "welch"}).p_value
 let w_p = wilcoxon(norm_a, norm_b).p_value
 print(f"t-test p = {t_p:.4}, Mann-Whitney p = {w_p:.4}")
 
 print("\n=== Skewed Data with Outlier: Tests May Disagree ===")
 let skew_a = [1.2, 1.5, 1.8, 1.1, 1.4, 1.6, 1.3, 1.7, 1.9, 50.0]
 let skew_b = [2.1, 2.3, 2.5, 2.0, 2.4, 2.2, 2.6, 2.1, 2.3, 2.5]
-let t_p2 = ttest(skew_a, skew_b).p_value
+let t_p2 = ttest(skew_a, skew_b, {variance: "welch"}).p_value
 let w_p2 = wilcoxon(skew_a, skew_b).p_value
 print(f"t-test p = {t_p2:.4}, Mann-Whitney p = {w_p2:.4}")
 print("The outlier inflates the t-test mean, masking the real pattern")
@@ -522,7 +523,7 @@ Generate 1000 simulations where both groups are truly normal with different mean
 - **Non-parametric tests** use ranks instead of raw values, making them robust to skewness and outliers
 - The **Mann-Whitney U** (Wilcoxon rank-sum) is the non-parametric alternative to the independent t-test
 - The **Wilcoxon signed-rank** test is the non-parametric alternative to the paired t-test
-- The **Kruskal-Wallis** test extends to three or more groups (non-parametric ANOVA)
+- The **Kruskal-Wallis** test compares rank distributions across three or more independent groups; it is not simply an ANOVA on medians
 - The **KS test** compares entire distributions, not just central tendency
 - Relative power depends on the particular test, alternative, sample size, ties, and distribution; there is no universal 95% rule
 - Microbiome abundance, cytokines, survival outcomes, and ordinal scales need methods matched to their sampling process and estimand; survival data additionally require censoring-aware methods

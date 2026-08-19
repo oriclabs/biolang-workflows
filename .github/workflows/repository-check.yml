@@ -18,3 +18,24 @@ jobs:
           python-version: "3.12"
       - run: python scripts/check_repository.py
 
+  executable-learning-material:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: oriclabs/biolang
+          path: _core
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: _core -> target
+      - name: Build BioLang
+        run: cargo build --manifest-path _core/Cargo.toml -p bl-cli
+      - name: Check MSMB examples
+        env:
+          BIOLANG_CLI: ${{ github.workspace }}/_core/target/debug/bl
+        run: node scripts/check-msmb.mjs
+      - name: Audit biostatistics code blocks
+        shell: pwsh
+        run: ./scripts/audit-biostatistics-book.ps1 -BioLangExe "${{ github.workspace }}/_core/target/debug/bl"

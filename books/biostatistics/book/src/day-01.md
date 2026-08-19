@@ -15,35 +15,29 @@
 
 ## The Problem
 
-Consider an illustrative drug-development scenario. A small Phase II cancer trial reports a statistically significant improvement, so the team moves quickly toward a much larger Phase III trial. The apparent benefit then fails to replicate. The example is fictional, but the design problem is real: an imprecise early estimate can look more certain than it is.
+Suppose a small early study reports that a treatment helped. The estimated benefit looks large, but the confidence interval is wide. A later study obtains a smaller estimate.
 
-The lesson is not that every small study is wrong. It is that small studies usually produce wider uncertainty and more variable effect estimates. Decisions should therefore consider the interval, study design, prior evidence, and replication—not only whether one p-value crossed a threshold.
+Neither result has to be fraudulent or incompetent. Small samples naturally produce estimates that move around more from study to study. Bias, different patient populations, measurement choices, and analysis decisions can add further disagreement.
 
-This story is not unusual. It plays out every year in laboratories, hospitals, and boardrooms around the world. Similar scenarios have unfolded with Alzheimer's drugs, cardiovascular therapies, and anti-inflammatory agents. The difference between a breakthrough and a blunder often comes down to a few fundamental statistical concepts — concepts that any biologist, clinician, or bioinformatician can learn.
+Statistics helps you ask four practical questions: **What was measured? How variable is it? How uncertain is the estimate? Could the study design have distorted it?** A p-value is only one part of those answers.
 
-That is what this book is about. In 30 days, you will build the statistical intuition and practical skills to avoid these mistakes — whether you are designing a clinical trial, analyzing RNA-seq data, or evaluating a paper over morning coffee.
+Over 30 days, this book develops that reasoning with biological examples and BioLang code. The aim is not to memorize test names. It is to understand what a result can—and cannot—support.
 
 ## What Is Statistics?
 
-Statistics is the science of learning from data in the presence of uncertainty. Think of it as a translator between the messy, noisy world of observations and the clean, confident conclusions you want to draw.
+Statistics is a way to learn from data while keeping uncertainty visible. It helps us summarize observations, compare explanations, estimate effects, and describe how much an answer may change with another sample.
 
-Imagine you are standing in a dark room, trying to understand the shape of an object by touching it with gloves on. You can feel something — ridges, curves, a rough texture — but every touch is imprecise. You might mistake a bump for an edge, or miss a hole entirely. Statistics gives you a flashlight. Not a perfect one — the beam flickers and the lens is smudged — but it is incomparably better than groping in the dark.
+Biological data vary for many reasons. Organisms differ, instruments add measurement error, sampling captures only part of a population, and experiments may contain bias or confounding. Statistics cannot erase those problems. It can help us see them and avoid claiming more than the study supports.
 
-In biology, the "dark room" is enormous. A single human genome contains 3.2 billion base pairs. A transcriptomics experiment measures expression levels for 20,000 genes simultaneously. A clinical trial tracks hundreds of variables across thousands of patients over years. No human can intuit patterns in data this vast. Statistics provides the framework to ask precise questions and get defensible answers.
+## Why Results May Not Reproduce
 
-## The Reproducibility Crisis
+Two studies can disagree because of ordinary sampling variation, different protocols or populations, weak measurement, selective reporting, confounding, or an analysis that does not match the design. Replication is therefore a new measurement of the claim—not a ceremonial repeat of the same calculation.
 
-In 2012, a team at Amgen, one of the world's largest biotechnology companies, attempted to reproduce 53 landmark studies in cancer biology — papers published in top-tier journals by respected labs. These were not obscure findings; they were studies that had shaped drug development programs and clinical practice.
+Statistical reasoning helps by making the question, experimental unit, analysis choices, uncertainty, and limitations explicit. It cannot compensate for missing controls or biased sampling, but it makes those weaknesses harder to hide.
 
-They could reproduce only 6. That is an 89% failure rate.
+### Trying Many Analyses and Reporting One
 
-Around the same time, Bayer HealthCare reported a similar effort. Of 67 preclinical studies they attempted to validate, roughly two-thirds could not be reproduced. The results that had guided millions of dollars in investment simply vanished when subjected to rigorous replication.
-
-How does published, peer-reviewed science fail at this rate? The reasons are many, but they share a common root: **insufficient statistical reasoning**.
-
-### P-Hacking: Torturing Data Until It Confesses
-
-One of the most insidious contributors is "p-hacking" — the practice of trying multiple analyses until one produces a statistically significant result. A researcher might:
+"P-hacking" means allowing the observed result to guide repeated analysis choices, then reporting only the analysis that crossed a desired threshold. A researcher might:
 
 - Test 15 different subgroups and report only the one with p < 0.05
 - Remove outliers selectively until the result becomes significant
@@ -51,19 +45,19 @@ One of the most insidious contributors is "p-hacking" — the practice of trying
 - Add or remove covariates until the "right" answer appears
 - Decide when to stop collecting data based on whether the current result is significant
 
-None of these practices involves fabricating data. Each individual decision might even seem reasonable in isolation. But collectively, they dramatically inflate the false positive rate. If you flip through enough combinations, you will find "significance" by pure chance — it is a mathematical certainty.
+Each choice may sound defensible in isolation. Together, undisclosed flexibility increases the chance of finding an apparently persuasive result even when no repeatable effect exists. Pre-specification, transparent sensitivity analyses, and reporting all relevant outcomes make the evidence easier to evaluate.
 
 ### Underpowered Studies
 
-Many published studies use sample sizes far too small to reliably detect the effects they claim to find. A study with only 12 mice per group has roughly a 20% chance of detecting a moderate treatment effect. That means 80% of real effects go undetected. But the 20% that are detected appear larger than they truly are (because only the noisiest, most extreme results cross the significance threshold), creating a distorted picture of biology.
+Small studies usually estimate effects imprecisely. Their power depends on the effect size, biological variation, design, measurement error, and chosen decision rule—not on sample size alone. When only threshold-crossing results are published, the reported effects from small studies can also look larger than the underlying effects.
 
 ### The Garden of Forking Paths
 
 Researchers make dozens of analytical decisions: how to clean the data, which variables to include, how to handle missing values, which test to use, whether to transform the data, how to define the outcome. Each decision is a fork in the path, and different choices lead to different results. When these choices are made after seeing the data (rather than pre-specified in an analysis plan), the researcher unconsciously navigates toward significance.
 
-This is not an indictment of individual scientists. Most researchers receive minimal formal training in statistics. A typical biology PhD might include one semester-long course, crammed between lab rotations and qualifying exams. The result is a generation of brilliant experimentalists who treat statistical tests as black boxes — input data, output significance. Reviewers, equally uncertain about statistics, wave the paper through. The system rewards novelty over rigor.
+These problems are usually workflow problems, not evidence of deliberate misconduct. Clear study questions, recorded decisions, appropriate models, readable diagnostics, and reproducible code all help.
 
-> **Key insight:** The reproducibility crisis is not primarily a crisis of fraud or incompetence. It is a crisis of statistical literacy. Understanding the concepts in this book is one of the most impactful things you can do for the quality of your science.
+> **Key insight:** A result is easier to trust when another person can see what was planned, what changed, what was measured, and how sensitive the conclusion is to reasonable choices.
 
 ## Signal vs. Noise
 
@@ -94,7 +88,7 @@ Here is the most fundamental question in statistics: **Is the pattern I see real
   <text x="175" y="288" text-anchor="middle" font-size="10" fill="#dc2626" font-style="italic">Apparent trend is just random scatter</text>
   <!-- Right panel: clear signal with many points -->
   <rect x="360" y="42" width="290" height="240" rx="6" fill="#f8fafc" stroke="#e2e8f0"/>
-  <text x="505" y="62" text-anchor="middle" font-size="12" font-weight="600" fill="#16a34a">Large Sample (n=100) — Signal Emerges</text>
+  <text x="505" y="62" text-anchor="middle" font-size="12" font-weight="600" fill="#16a34a">Larger Sample (n=100) — Pattern Is Clearer</text>
   <!-- Axes -->
   <line x1="390" y1="250" x2="625" y2="250" stroke="#9ca3af" stroke-width="1.5"/>
   <line x1="390" y1="250" x2="390" y2="75" stroke="#9ca3af" stroke-width="1.5"/>
@@ -124,7 +118,7 @@ Here is the most fundamental question in statistics: **Is the pattern I see real
   <circle cx="610" cy="115" r="3" fill="#3b82f6" opacity="0.4"/>
   <!-- Clear trend line -->
   <line x1="395" y1="232" x2="615" y2="108" stroke="#2563eb" stroke-width="2.5" opacity="0.85"/>
-  <text x="505" y="288" text-anchor="middle" font-size="10" fill="#16a34a" font-style="italic">With enough data, the real trend is unmistakable</text>
+  <text x="505" y="288" text-anchor="middle" font-size="10" fill="#16a34a" font-style="italic">More data reduces sampling noise; it does not remove bias</text>
 </svg>
 </div>
 
@@ -132,7 +126,7 @@ Consider a simple experiment. You flip a coin 10 times and get 8 heads. Is the c
 
 Now flip the coin 100 times and get 80 heads. Under a fair-coin model, the probability of 80 or more heads is about 0.00000000056—roughly one in 1.8 billion. That is strong evidence against the fair-coin model, although it does not diagnose why the result occurred.
 
-The pattern (80% heads) is the same in both cases. What changed is the **sample size**. With 10 flips, 80% heads is plausible noise. With 100 flips, 80% heads is an unmistakable signal.
+The observed proportion (80% heads) is the same in both cases. What changed is the **sample size**. Under the fair-coin model, 8 of 10 can occur occasionally; 80 of 100 is much harder to explain by sampling variation alone.
 
 The same reasoning applies to the illustrative cancer trial: a small early study leaves more room for sampling variation. A larger, well-designed study usually narrows that uncertainty, but size alone does not remove bias, measurement problems, or differences between study populations.
 
@@ -140,7 +134,7 @@ The same reasoning applies to the illustrative cancer trial: a small early study
 
 ## The Cost of Being Wrong
 
-In statistics, there are exactly two ways to be wrong, and they have very different consequences.
+In a binary hypothesis-testing decision, two error types are possible, and they have different consequences.
 
 ### Type I Error: The False Alarm
 
@@ -148,24 +142,20 @@ A Type I error occurs when you conclude there is an effect when there is none. Y
 
 A laboratory example is advancing a compound because one noisy screen crosses a threshold even though the compound has no repeatable effect. Replication, quality control, and multiplicity correction reduce this risk; no single threshold eliminates it.
 
-A more modern example: in 2004, Merck withdrew Vioxx (rofecoxib), a blockbuster anti-inflammatory drug, after it became clear that it significantly increased heart attack risk. The drug had been on the market for five years. Post-withdrawal analysis suggested that the cardiovascular risk had been detectable in the original trial data, but was either missed or downplayed. The cost: an estimated 88,000-140,000 excess cases of heart disease in the United States alone.
-
 ### Type II Error: The Missed Discovery
 
-A Type II error occurs when you fail to detect a real effect. You declare the coin fair when it is actually biased. You reject a drug that actually works.
+A Type II error occurs when the test fails to reject its null model even though the specified alternative is true. You miss evidence that the coin is biased or fail to detect a treatment effect the study was designed to find.
 
 A laboratory example is discarding a promising treatment because a small, noisy experiment could not distinguish its effect from background variation. A non-significant result may reflect no important effect, inadequate precision, poor measurement, or a mismatched analysis; the interval and design help distinguish these possibilities.
 
-Every year, real treatments are abandoned because clinical trials were too small to detect their effect. Every year, genuine biological mechanisms are dismissed because the experiment lacked statistical power. Type II errors are the silent killers of science — you never know what you missed, because the missed discovery never makes it into a journal.
-
-How many effective cancer therapies have been shelved because the Phase II trial enrolled 40 patients instead of 400? We will never know. But the statistical tools to prevent this — power analysis and sample size calculation — are straightforward. You will learn them on Day 26.
+The difficulty is that a missed effect is not visible in the final table. A wide confidence interval may include both no meaningful benefit and a worthwhile benefit. That is why planning should consider the smallest effect that matters, expected variation, attrition, and the experimental unit before data collection. Day 18 develops power and sample-size planning.
 
 | Error Type | What Happens | Consequence | Biology Example |
 |---|---|---|---|
 | Type I (False Positive) | Conclude effect exists when it does not | Wasted resources, patient harm | Approving ineffective drug |
 | Type II (False Negative) | Miss a real effect | Lost discoveries, delayed treatments | Rejecting H. pylori hypothesis |
-| Correct rejection | Correctly conclude no effect | Good science | Debunking a false supplement claim |
-| Correct detection | Correctly detect real effect | Discovery! | Identifying BRCA1 as cancer gene |
+| Correct non-rejection | Test does not reject when H0 is true | Avoid an unnecessary claim | Do not advance an inactive screening hit |
+| Correct detection | Reject H0 when the specified alternative is true | Detect a planned signal | Detect a repeatable treatment effect |
 
 <div style="text-align: center; margin: 2em 0;">
 <svg width="660" height="310" viewBox="0 0 660 310" xmlns="http://www.w3.org/2000/svg" style="background: #fafbfc; border: 1px solid #e5e7eb; border-radius: 8px;">
@@ -190,19 +180,19 @@ How many effective cancer therapies have been shelved because the Phase II trial
   <text x="335" y="110" text-anchor="middle" font-size="14" font-weight="bold" fill="#dc2626">TYPE I ERROR</text>
   <text x="335" y="130" text-anchor="middle" font-size="12" fill="#dc2626">False Positive (alpha)</text>
   <text x="335" y="150" text-anchor="middle" font-size="11" fill="#7f1d1d">Approve drug that doesn't work</text>
-  <text x="335" y="166" text-anchor="middle" font-size="11" fill="#7f1d1d">Rate controlled at 5%</text>
+  <text x="335" y="166" text-anchor="middle" font-size="11" fill="#7f1d1d">Chosen alpha controls this rate</text>
   <!-- True Positive -->
   <rect x="472" y="72" width="166" height="106" fill="#f0fdf4" rx="4"/>
   <text x="555" y="110" text-anchor="middle" font-size="14" font-weight="bold" fill="#16a34a">CORRECT</text>
   <text x="555" y="130" text-anchor="middle" font-size="12" fill="#16a34a">True Positive (Power)</text>
   <text x="555" y="150" text-anchor="middle" font-size="11" fill="#14532d">Detect real treatment</text>
-  <text x="555" y="166" text-anchor="middle" font-size="11" fill="#14532d">Goal: 80%+</text>
+  <text x="555" y="166" text-anchor="middle" font-size="11" fill="#14532d">Power depends on effect and design</text>
   <!-- True Negative -->
   <rect x="202" y="182" width="266" height="106" fill="#f0fdf4" rx="4"/>
   <text x="335" y="220" text-anchor="middle" font-size="14" font-weight="bold" fill="#16a34a">CORRECT</text>
   <text x="335" y="240" text-anchor="middle" font-size="12" fill="#16a34a">True Negative</text>
-  <text x="335" y="260" text-anchor="middle" font-size="11" fill="#14532d">Correctly reject bad drug</text>
-  <text x="335" y="276" text-anchor="middle" font-size="11" fill="#14532d">Rate = 1 - alpha = 95%</text>
+  <text x="335" y="260" text-anchor="middle" font-size="11" fill="#14532d">Do not claim an unsupported effect</text>
+  <text x="335" y="276" text-anchor="middle" font-size="11" fill="#14532d">Probability = 1 - alpha</text>
   <!-- Type II Error (False Negative) -->
   <rect x="472" y="182" width="166" height="106" fill="#fef2f2" rx="4"/>
   <text x="555" y="220" text-anchor="middle" font-size="14" font-weight="bold" fill="#dc2626">TYPE II ERROR</text>
@@ -214,39 +204,37 @@ How many effective cancer therapies have been shelved because the Phase II trial
 
 > **Clinical relevance:** In diagnostic testing, Type I errors produce false positives (telling a healthy person they have cancer) and Type II errors produce false negatives (telling a cancer patient they are healthy). Both are harmful, but in different ways. The balance between them is one of the central tensions in medicine.
 
-## Why Biology Needs Statistics More Than Most Fields
+## Why Biological Data Is Challenging
 
-A physicist measuring the speed of light will get the same answer (within measurement precision) whether the experiment is run in Tokyo or Toronto, on Monday or Friday, in summer or winter. The speed of light does not have a bad day.
-
-Biology is fundamentally different, for three reasons.
+Biological measurements combine real variation among organisms with technical variation from sampling and instruments. Three features appear repeatedly.
 
 ### 1. Biological Variability
 
-Every organism is unique. Two genetically identical mice raised in the same cage, fed the same diet, will still differ in gene expression, tumor growth rate, immune response, and lifespan. This is not experimental error — it is the intrinsic variability of living systems. Evolution has built variability into every level of biology, from stochastic gene expression to somatic mutation to behavioral differences.
+Organisms, tissues, cells, and molecules vary. Even genetically similar organisms in controlled conditions can differ in expression, immune response, growth, and other outcomes. This is biological variation, not automatically experimental error.
 
-This variability means that a single measurement tells you almost nothing. If one mouse responds to a drug, you cannot conclude the drug works. If one patient's tumor shrinks, you cannot attribute it to the treatment. You need replicates, and you need statistics to make sense of them.
+One observation may be important, but it cannot by itself describe repeatability or population variation. Independent biological replication helps separate an individual observation from a reproducible pattern.
 
 ### 2. Measurement Noise
 
-Biological measurement is imprecise. A sequencing run introduces base-calling errors at a rate of roughly 0.1-1% per base. RNA-seq quantification depends on library preparation, read depth, alignment parameters, and normalization method. Mass spectrometry measurements fluctuate with instrument calibration, sample preparation, and ionization efficiency.
+RNA-seq quantification depends on sample handling, library preparation, read depth, alignment, and normalization. Mass-spectrometry results depend on preparation, calibration, detection, and ionization. Some errors are random; others are systematic.
 
-Every measurement in biology is the true signal plus some unknown amount of noise. Statistics provides the tools to separate one from the other.
+Statistics can quantify variation and compare explanations, but it cannot always identify “true signal” from values alone. Controls, calibration, replication, and recorded metadata are essential.
 
 ### 3. Massive Parallel Testing
 
 Modern biology is high-dimensional. A genome-wide association study (GWAS) tests millions of genetic variants. A differential expression analysis tests 20,000 genes. A proteomics experiment quantifies thousands of proteins. A drug screen tests hundreds of compounds.
 
-When you test 20,000 hypotheses simultaneously, you expect 1,000 false positives by chance alone (at the conventional 5% threshold). Without proper statistical correction for multiple testing, you would drown in spurious results. This is not a theoretical concern — it is the daily reality of genomics, and getting it wrong has real consequences.
+If 20,000 valid null hypotheses were all true and each were tested at 0.05, the expected number crossing that unadjusted threshold would be about 1,000. This is why genomics workflows must account for multiplicity.
 
 To make this concrete, consider a differential expression analysis. You measure expression of 20,000 genes in treatment versus control. Even if the treatment does absolutely nothing — affects zero genes — testing each gene at &alpha; = 0.05 will flag approximately 1,000 genes as "significant." If you published a paper claiming these 1,000 genes are treatment-responsive, every single one would be a false positive.
 
-The solution (multiple testing correction, which we cover on Day 15) reduces the significance threshold to account for the number of tests. In a GWAS with 1 million variants, the genome-wide significance threshold is p < 5 &times; 10&#x207B;&#x2078; — one thousand times more stringent than the usual 0.05. Understanding why this correction is necessary, and how to apply it properly, is one of the core skills of a computational biologist.
+Multiple-testing methods control a chosen error rate across the collection of questions. Day 12 explains family-wise error and false-discovery-rate approaches; the appropriate choice depends on whether the goal is strict confirmation or discovery followed by validation.
 
-> **Key insight:** Biology sits at the intersection of high variability, high noise, and high dimensionality. This makes it arguably the field most in need of statistical sophistication, yet it has historically been one of the least statistically trained.
+> **Key insight:** Biological variation, technical effects, and thousands of simultaneous measurements make design, quality control, uncertainty, and multiplicity part of the science—not administrative details.
 
 ## A Tour of What Lies Ahead
 
-This book will take you from zero to practicing biostatistician in 30 days. Here is a preview of the journey:
+This book provides a working foundation for analysing biological data and communicating uncertainty. It does not replace specialist training or collaboration for high-stakes studies. Here is the learning path:
 
 <div style="text-align: center; margin: 2em 0;">
 <svg width="680" height="200" viewBox="0 0 680 200" xmlns="http://www.w3.org/2000/svg" style="background: #fafbfc; border: 1px solid #e5e7eb; border-radius: 8px;">
@@ -444,10 +432,10 @@ A paper reports testing a drug on patients across 8 different cancer subtypes. O
 ## Key Takeaways
 
 - Statistics is the science of learning from data in the presence of uncertainty — it is essential, not optional, for biological research.
-- The reproducibility crisis is largely a statistical literacy crisis: most landmark findings fail replication due to underpowered studies, p-hacking, and misunderstood tests.
+- Results may fail to reproduce because of sampling variation, bias, protocol differences, selective reporting, confounding, or analysis choices; transparent workflows make these causes easier to examine.
 - Signal vs. noise is the fundamental statistical question: the same percentage difference can be meaningful or meaningless depending on sample size.
 - Type I errors (false positives) waste resources and can cause harm; Type II errors (false negatives) cause missed discoveries. Neither can be eliminated — only managed.
-- Biology is uniquely challenging for statistics due to inherent biological variability, measurement noise, and massive parallel testing.
+- Biological analysis must handle biological variation, technical effects, and often thousands of simultaneous measurements.
 - The statistician's mindset asks four questions: How variable? Could chance explain it? How big is the effect? Is the sample representative?
 - Statistics should inform every stage of research, from design through interpretation — not just the analysis phase.
 

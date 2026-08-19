@@ -13,6 +13,8 @@ REQUIRED = (
     "workflow.toml",
     "books/practical-bioinformatics",
     "books/biostatistics",
+    "books/msmb",
+    "books/single-cell-rna-seq",
     "courses/hbc-scrnaseq",
     "courses/hbc-scrnaseq-validated",
     "examples",

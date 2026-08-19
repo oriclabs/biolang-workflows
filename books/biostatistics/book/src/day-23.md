@@ -575,7 +575,7 @@ print("Observed mean diff: " + str(round(obs_diff, 3)))
 print("Permutation p-value: " + str(round(perm_p, 4)))
 
 # Compare to Welch t-test
-let tt = ttest(treatment, control)
+let tt = ttest(treatment, control, {variance: "welch"})
 print("Welch t-test p-value: " + str(round(tt.p_value, 4)))
 
 # Visualize the null distribution

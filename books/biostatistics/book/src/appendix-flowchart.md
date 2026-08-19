@@ -1,8 +1,16 @@
 # Appendix B: Statistical Decision Flowchart
 
-> *The hardest part of statistics is choosing the right test. This appendix is your map.*
+> *The hardest part is translating a scientific question and study design into an analysis. This appendix is a starting map, not an automatic test selector.*
 
-When you have data and a question, the path to the correct statistical test follows a decision tree based on three things: what kind of data you have, how many groups you are comparing, and what assumptions your data meets. This appendix lays out that tree in a series of tables you can consult whenever you are unsure.
+Before choosing a method, write down five things:
+
+1. **Question:** What quantity or contrast do you want to estimate?
+2. **Outcome:** Is it continuous, count, binary, ordinal, proportion, or time-to-event?
+3. **Experimental unit:** What was independently assigned or sampled—a patient, mouse, culture, library, or cell?
+4. **Dependence:** Are observations paired, repeated, clustered, spatial, or time ordered?
+5. **Design problems:** Could selection, missingness, confounding, censoring, or measurement error distort the answer?
+
+The tables below narrow the options after those questions are answered. No histogram or normality test can repair a mismatch between the method and the experimental unit.
 
 ## The Master Decision Guide
 
@@ -28,9 +36,9 @@ Use this when you have one outcome variable and two groups (e.g., control vs. tr
 | Outcome type | Next step |
 |---|---|
 | Continuous (expression level, concentration, weight) | Step 2 |
-| Counts (number of mutations, colony counts) | Consider Poisson or negative binomial test |
+| Counts (number of mutations, colony counts) | Consider a count model; check exposure and overdispersion |
 | Binary (alive/dead, present/absent) | See [Categorical Data](#categorical-data) |
-| Ordinal (severity scale, Likert scores) | Use non-parametric test |
+| Ordinal (severity scale, ordered category) | Use an ordinal or rank-based method that matches the design |
 
 ### Step 2: Are the observations paired or independent?
 
@@ -42,15 +50,14 @@ Use this when you have one outcome variable and two groups (e.g., control vs. tr
 
 ### Step 3: Choose your test
 
-| Paired? | Normal distribution? | Equal variance? | Test | BioLang |
+| Paired? | Working conditions | Variance | Test | BioLang |
 |---|---|---|---|---|
-| No | Yes | Yes | Student's t-test | `ttest(a, b)` |
-| No | Yes | No | Welch's t-test | `ttest(a, b)` |
-| No | No | — | Mann-Whitney U | `wilcoxon(a, b)` |
-| Yes | Yes | — | Paired t-test | `ttest_paired(a, b)` |
-| Yes | No | — | Wilcoxon signed-rank | Not currently a builtin; `wilcoxon(a, b)` is rank-sum for independent groups |
+| No | Mean difference is the target; no severe influential-point problem | May differ | Welch's t-test | `ttest(a, b, {variance: "welch"})` |
+| No | Rank/distribution comparison is appropriate | Not required equal | Mann-Whitney U | `wilcoxon(a, b)` |
+| Yes | Mean of paired differences is the target | Applied to differences | Paired t-test | `ttest_paired(a, b)` |
+| Yes | Rank-based paired comparison is appropriate | Not required equal | Wilcoxon signed-rank | `wilcoxon_paired(before, after)`; `wilcoxon(a, b)` remains the independent rank-sum test |
 
-> **Key insight:** Welch's t-test is almost always preferred over Student's t-test because it does not assume equal variances. When variances are actually equal, Welch's test gives nearly identical results. When they are not, Student's test can be dangerously wrong. BioLang uses Welch's by default.
+> **Key insight:** Use `{variance: "welch"}` for Welch's independent-samples t-test; the two-argument form remains pooled for backward compatibility. A rank test is not simply a “t-test without normality”; it changes what feature of the distributions is being compared and needs its own interpretation.
 
 ### How to check normality
 
@@ -62,10 +69,9 @@ let report = stat.explore(data)
 stat.distribution_plot(data, {title: "Distribution check"})
 ```
 
-Use `normal_qq_plot(values)` for a normal-distribution diagnostic. The older
-`qq_plot(p_values)` remains specifically for genomic p-value Q-Q plots.
+For an independent-group mean comparison, inspect each group and the fitted model. For a paired t-test, inspect the **paired differences**, because those are what the test analyses. Use `normal_qq_plot(values)` as one visual diagnostic. The older `qq_plot(p_values)` remains specifically for genomic p-value Q-Q plots.
 
-> **Common pitfall:** With small samples (n < 30), normality tests have low power and may fail to reject normality even when the data is non-normal. With large samples (n > 5000), normality tests reject normality for trivially small deviations. Use Q-Q plots as a visual supplement.
+> **Common pitfall:** A normality-test p-value is not a traffic light. With small samples it may miss important departures; with very large samples it may detect harmless ones. Combine Q-Q plots, raw points, influence checks, study design, and sensitivity analysis.
 
 ## Comparing Multiple Groups
 
@@ -74,8 +80,8 @@ Use this when you have three or more groups (e.g., three drug doses, four tissue
 | Normal? | Equal variance? | Design | Test | BioLang |
 |---|---|---|---|---|
 | Yes | Yes | Independent groups | One-way ANOVA | `anova(groups)` |
-| Yes | No | Independent groups | Welch's ANOVA | `anova(groups)` |
-| No | — | Independent groups | Kruskal-Wallis | Not currently a builtin |
+| Yes | No | Independent groups | Welch's ANOVA | `anova(groups, {variance: "welch"})` |
+| No | — | Independent groups | Kruskal-Wallis rank/distribution comparison | `kruskal_wallis(groups)` |
 | Yes | — | Repeated measures | Repeated-measures ANOVA | Not currently a builtin |
 | No | — | Repeated measures | Friedman test | Not currently a builtin |
 | Yes | — | Two factors | Two-way ANOVA | Use an explicitly specified regression model; `anova(groups)` is one-way only |
@@ -86,12 +92,12 @@ When ANOVA is significant, you know *some* groups differ but not *which* ones. U
 
 | Test | When to use | BioLang |
 |---|---|---|
-| Tukey HSD | All pairwise comparisons | Pairwise `ttest()` + `p_adjust(pvals, "bonferroni")` |
-| Dunnett | Compare all groups to a single control | Pairwise `ttest()` vs control + `p_adjust()` |
-| Dunn test | Post-hoc for Kruskal-Wallis | Pairwise `wilcoxon()` + `p_adjust()` |
-| Bonferroni-corrected pairwise | Conservative, any design | Pairwise `ttest()` + `p_adjust(pvals, "bonferroni")` |
+| Tukey HSD | All pairs after a defensible classical equal-variance ANOVA | `tukey_hsd(groups)` |
+| Dunnett | Compare all groups to a single control | Not currently a builtin; adjusted pairwise tests are not Dunnett's joint procedure |
+| Dunn test | Post-hoc for Kruskal-Wallis | Not currently a builtin; separate rank-sum tests are not Dunn's pooled-rank procedure |
+| Adjusted pairwise mean tests | Pair-specific Welch or pooled comparisons | `pairwise_ttest(groups, {variance: "welch", adjust: "holm"})` |
 
-> **Key insight:** ANOVA is an *omnibus* test — it tells you that at least one group differs, but not which one. Always follow a significant ANOVA with post-hoc comparisons. Reporting only the ANOVA p-value is incomplete.
+> **Key insight:** ANOVA is an *omnibus* test—it addresses whether the group means are all compatible with equality under the model. If the scientific question concerns particular groups, report pre-planned contrasts or multiplicity-aware follow-up comparisons with effect estimates and intervals.
 
 ## Associations and Correlations
 
@@ -104,7 +110,9 @@ Use this when you have two continuous variables and want to know if they are rel
 | Ordinal data with ties | Kendall tau | `kendall(x, y)` |
 | Partial correlation (controlling for a third variable) | Partial correlation | `cor(x, y)` after residualizing on z |
 
-### Interpreting Correlation Strength
+### Interpreting Correlation Magnitude
+
+The following labels are rough descriptions, not biological decision thresholds. A correlation of 0.2 may matter for a widespread exposure, while 0.8 may still be useless for individual prediction. Always show the scatter plot, sample size, interval, and scientific units.
 
 | |r| value | Interpretation |
 |---|---|
@@ -178,7 +186,7 @@ Use this when your outcome is the time until something happens (death, relapse, 
 | Adjust for covariates | Cox proportional hazards | `cox_ph(time, event, covariates)` |
 | Estimate median survival | From sorted times | `sort(times)[len(times) / 2]` |
 
-> **Clinical relevance:** In clinical trials, the hazard ratio from a Cox model is the primary efficacy endpoint. A hazard ratio of 0.65 means the treatment group has a 35% lower instantaneous risk of the event at any time point. Always report the 95% confidence interval alongside the point estimate.
+> **Clinical relevance:** Some clinical trials use a Cox-model hazard ratio as an efficacy measure. A hazard ratio of 0.65 describes a modeled instantaneous event-rate ratio, conditional on the model; it is not automatically a 35% reduction in an individual's probability of experiencing the event. Report the interval, absolute survival summaries, censoring information, and proportional-hazards assessment.
 
 ## Dimensionality Reduction
 
@@ -189,7 +197,7 @@ Use this when you have many variables (genes, proteins, metabolites) and want to
 | Find linear combinations that maximize variance | PCA | `pca(data)` |
 | Visualize PCA results | PCA plot | `pca_plot(result, {title: "PCA"})` |
 
-> **Key insight:** PCA is deterministic — you get the same answer every time. t-SNE and UMAP are stochastic — different runs give different layouts. Always set a random seed before running stochastic methods for reproducibility.
+> **Key insight:** A fixed PCA implementation and input generally reproduces the same subspace, although component signs and nearly tied components can differ. t-SNE and UMAP commonly use stochastic or approximate steps, so record seeds, parameters, software versions, and the input representation.
 
 ## Clustering
 
@@ -214,13 +222,13 @@ Use this whenever you perform more than one statistical test on the same dataset
 | Benjamini-Yekutieli | FDR under dependence | Conservative FDR | Not currently a builtin |
 | Permutation | Empirical null | Gold standard | Inline loop with `shuffle()` |
 
-> **Key insight:** For genomics (testing thousands of genes), Benjamini-Hochberg FDR correction at q = 0.05 is the standard. Bonferroni is too conservative for genome-wide studies — it controls the family-wise error rate, which is the wrong quantity when you expect hundreds of true positives.
+> **Key insight:** In exploratory genomics, Benjamini-Hochberg FDR control is common because it balances discovery and false-discovery control. Family-wise methods such as Holm or Bonferroni answer a stricter question and may be appropriate when even one false positive is costly. Choose the error criterion from the study goal rather than habit.
 
 ## Quick Reference: Common Biological Scenarios
 
 | Scenario | Recommended test | BioLang |
 |---|---|---|
-| Gene expression, treated vs. control | Welch's t-test | `ttest(treated, control)` |
+| Gene expression, treated vs. control | Welch's t-test | `ttest(treated, control, {variance: "welch"})` |
 | Gene expression across 4 tissues | One-way ANOVA | `anova([tissue1, tissue2, tissue3, tissue4])` |
 | Mutation frequency in cases vs. controls | Fisher's exact test | `fisher_exact(a, b, c, d)` |
 | Survival by treatment arm | Log-rank comparison with censoring | `log_rank_test(times_a, events_a, times_b, events_b)` |

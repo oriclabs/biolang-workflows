@@ -8,19 +8,19 @@
 
 ## The Problem
 
-Dr. Kenji Nakamura has spent three years developing a blood-based biomarker panel for early Alzheimer's detection. His team measures plasma levels of phosphorylated tau (p-tau217) in 40 cognitively normal individuals and 40 patients with confirmed early-stage Alzheimer's. The mean p-tau217 level in the Alzheimer's group is 3.8 pg/mL, compared to 2.9 pg/mL in controls. The difference looks promising — nearly 30% higher.
+Suppose a biomarker is higher in a disease group than in a control group. The observed difference is easy to calculate. The harder questions are whether it is precise, whether the groups were comparable, and whether variation alone could plausibly produce a difference at least this large under a specified no-difference model.
 
-But when Dr. Nakamura submits to the FDA for breakthrough device designation, the reviewer's response is blunt: "Your biomarker shows a numerical difference. Can you demonstrate this isn't just sampling noise? What is the probability of seeing a difference this large if the biomarker has no real diagnostic value?" This is the fundamental question that hypothesis testing answers.
-
-The stakes are enormous. If the biomarker works, millions of patients could be diagnosed years earlier, when interventions are most effective. If it doesn't — if the observed difference is just statistical noise — pursuing it wastes hundreds of millions in development costs and, worse, could lead to false diagnoses.
+A hypothesis test addresses the last question. It does not establish diagnostic usefulness, remove confounding, or tell us whether the effect is clinically important. Those require effect estimates, intervals, validation, and appropriate study design.
 
 ## What Is Hypothesis Testing?
 
-Think of hypothesis testing as a courtroom trial for your scientific claim.
+As a first analogy, think of hypothesis testing as a courtroom trial for a scientific claim.
 
 - The **defendant** is the null hypothesis (H0): "There is no effect." In the courtroom, the defendant is presumed innocent.
 - The **prosecution's evidence** is your data. You are trying to show the evidence is so overwhelming that the "innocence" explanation is implausible.
 - The **verdict** is either "guilty" (reject H0) or "not proven" (fail to reject H0). Notice: the jury never declares the defendant "innocent" — just that the evidence was insufficient.
+
+The analogy has limits: a null model is a mathematical reference, not a person presumed innocent. The test asks what the statistic would look like if that reference model and its assumptions were used.
 
 > **Key insight:** A hypothesis test does not prove a theory. It measures how incompatible the observed statistic is with a specified null model, conditional on the design and assumptions. Report the effect and interval as well as the test result.
 
@@ -62,7 +62,7 @@ Think of hypothesis testing as a courtroom trial for your scientific claim.
   <rect x="180" y="316" width="14" height="10" fill="#fecaca" stroke="#dc2626" stroke-width="0.5" rx="2"/>
   <text x="200" y="326" font-size="11" fill="#6b7280">Rejection regions (alpha = 0.05)</text>
   <rect x="400" y="316" width="14" height="10" fill="#dbeafe" stroke="#3b82f6" stroke-width="0.5" rx="2"/>
-  <text x="420" y="326" font-size="11" fill="#6b7280">Acceptance region</text>
+  <text x="420" y="326" font-size="11" fill="#6b7280">Non-rejection region</text>
 </svg>
 </div>
 
@@ -78,7 +78,7 @@ Think of hypothesis testing as a courtroom trial for your scientific claim.
 
 ## The Null Hypothesis (H0)
 
-The null hypothesis is the "boring" explanation — the default assumption of no effect, no difference, no relationship. It is what you assume until the data force you to abandon it.
+The null hypothesis is the reference statement used to generate the comparison distribution. It is often “no mean difference” or “no association,” but it must be written precisely enough to calculate what outcomes are expected under the model.
 
 | Research Question | Null Hypothesis (H0) |
 |---|---|
@@ -89,21 +89,21 @@ The null hypothesis is the "boring" explanation — the default assumption of no
 
 ## The Alternative Hypothesis (H1)
 
-The alternative is what you actually believe — the "interesting" claim.
+The alternative describes departures the test is designed to detect. It is not automatically what the researcher personally believes.
 
 - **Two-tailed:** H1: mu1 != mu2 (the groups differ in either direction)
 - **One-tailed:** H1: mu1 > mu2 (specifically higher) or H1: mu1 < mu2 (specifically lower)
 
-> **Common pitfall:** Do not choose one-tailed vs two-tailed after looking at your data. This decision must be made before the experiment, based on your scientific question. Switching from two-tailed to one-tailed after seeing results halves your p-value — that is scientific fraud.
+> **Common pitfall:** Choose one-tailed or two-tailed testing from the scientific question and consequences before inspecting the direction of the result. Changing direction after seeing the data makes the reported calibration invalid unless it is clearly labelled exploratory and checked with new data.
 
 ## The p-Value: Most Misunderstood Number in Science
 
-The p-value is the probability of observing data as extreme as (or more extreme than) what you got, **assuming H0 is true**.
+The p-value is the probability, **under the null model and its assumptions**, of obtaining the chosen test statistic at least as incompatible with that model as the observed statistic.
 
 ### What the p-value IS:
-- A measure of how surprising your data are under the null hypothesis
-- A continuous measure of evidence — smaller p = more evidence against H0
-- The probability of the data given H0: P(data | H0)
+- A tail area in the null distribution of a pre-specified test statistic
+- A measure of incompatibility between that statistic and the null model
+- Sensitive to effect magnitude, sample size, variability, design, and modelling choices
 
 ### What the p-value IS NOT:
 - The probability that H0 is true: NOT P(H0 | data)
@@ -149,13 +149,11 @@ The p-value is the probability of observing data as extreme as (or more extreme 
 </svg>
 </div>
 
-| p-value | Informal Interpretation |
-|---|---|
-| p > 0.10 | Little evidence against H0 |
-| 0.05 < p < 0.10 | Weak evidence against H0 |
-| 0.01 < p < 0.05 | Moderate evidence against H0 |
-| 0.001 < p < 0.01 | Strong evidence against H0 |
-| p < 0.001 | Very strong evidence against H0 |
+Do not translate p-values through a universal adjective table. Instead ask:
+
+1. What null model and test statistic produced it?
+2. What effect size and confidence interval accompany it?
+3. Were the analysis, stopping rule, and number of tested questions accounted for?
 
 ## Type I and Type II Errors
 
@@ -213,7 +211,7 @@ Every decision carries the risk of being wrong:
 </svg>
 </div>
 
-> **Clinical relevance:** In drug safety testing, alpha is typically set very low (0.01 or even 0.001) because a Type I error means approving a dangerous drug. In exploratory genomics, higher alpha (0.05 or even 0.10) is acceptable because you will validate hits in follow-up experiments.
+> **Practical relevance:** The decision threshold should reflect the design, multiplicity, regulatory or scientific context, and consequences of false alarms and missed effects. Exploratory screening may tolerate more candidates only when the workflow includes correction, transparent reporting, and genuine follow-up validation.
 
 ## Statistical vs Practical Significance
 
@@ -472,7 +470,7 @@ Run 10,000 z-tests where H0 is true (both groups from the same distribution). Co
 
 **Exercise 4: One-Tailed vs Two-Tailed**
 
-Using the Alzheimer's biomarker data, compute the p-value for both a one-tailed test (H1: AD levels are *higher*) and a two-tailed test. What is the relationship between the two p-values?
+Using the illustrative biomarker data, compute the p-value for both a pre-specified one-tailed test (H1: disease-group levels are *higher*) and a two-tailed test. What is the relationship when the observed effect is in the specified direction?
 
 ```bio
 let ad_levels = [3.2, 4.1, 3.8, 2.7, 4.5, 3.3, 3.9, 4.2, 3.1, 3.6,
@@ -486,14 +484,14 @@ let ad_levels = [3.2, 4.1, 3.8, 2.7, 4.5, 3.3, 3.9, 4.2, 3.1, 3.6,
 
 ## Key Takeaways
 
-- Hypothesis testing uses the **courtroom analogy**: H0 (innocence) is assumed until the evidence (data) is overwhelming
-- The **p-value** is the probability of data this extreme under H0 — it is NOT the probability H0 is true
-- **Type I error** (false positive) is controlled by alpha; **Type II error** (false negative) is controlled by power
+- The **courtroom analogy** can introduce non-rejection, but a null hypothesis is a mathematical reference model rather than a person presumed innocent.
+- The **p-value** is a tail probability for a chosen statistic under H0 and its assumptions—it is not the probability H0 is true.
+- The chosen **alpha** calibrates Type I error under the test model; **power** describes rejection under a specified alternative and design.
 - **Statistical significance** (small p) does not imply **practical significance** (large effect)
 - The **z-test** is the simplest hypothesis test, applicable when sigma is known
 - Always state hypotheses and choose alpha **before** looking at data
-- Under the null, p-values are uniformly distributed: at alpha = 0.05, exactly 5% of null tests will be "significant" by chance
+- For a valid continuous test under its null model, p-values are uniform; across many repeated null studies, about 5% fall below 0.05, subject to discreteness and model validity.
 
 ## What's Next
 
-Tomorrow we move from the z-test (which requires known sigma) to the workhorse of biological research: the t-test. You will learn independent, paired, and Welch's versions, check assumptions with Shapiro-Wilk and Levene's tests, and quantify effect sizes with Cohen's d. If hypothesis testing is the question, the t-test is the answer for two-group comparisons.
+Tomorrow we move from the z-test, which assumes known sigma, to t-based mean comparisons. You will distinguish independent, paired, and Welch designs, inspect the observations or paired differences, and report effect sizes and intervals. A t-test is one option for a two-group mean question—not a universal answer to every two-group dataset.

@@ -117,30 +117,35 @@ rpois(100, 5.0)
 
 | Function | Description | Example |
 |---|---|---|
-| `ttest(a, b)` | Welch's two-sample t-test | `ttest(ctrl, treat)` |
+| `ttest(a, b)` | Pooled Student two-sample t-test (compatibility default) | `ttest(ctrl, treat)` |
+| `ttest(a, b, {variance: "welch"})` | Welch's two-sample t-test; preferred default for independent means | `ttest(ctrl, treat, {variance: "welch"})` |
 | `ttest_paired(a, b)` | Paired t-test | `ttest_paired(before, after)` |
 | `ttest_one(x, mu)` | One-sample t-test | `ttest_one(diffs, 0)` |
-| `wilcoxon(a, b)` | Mann-Whitney/Wilcoxon rank-sum for independent groups | `wilcoxon(ctrl, treat)` |
+| `wilcoxon(a, b, options?)` | Independent-group Mann-Whitney rank-sum; method is explicit in the result | `wilcoxon(ctrl, treat, {method: "exact"})` |
+| `wilcoxon_paired(before, after, options?)` | Paired signed-rank test; uses `before - after`, reports V and paired rank-biserial effect | `wilcoxon_paired(before, after, {method: "normal", continuity: true})` |
 
 ### Comparing Multiple Groups
 
 | Function | Description | Example |
 |---|---|---|
 | `anova(groups)` | Classical one-way ANOVA | `anova([g1, g2, g3])` |
+| `anova(groups, {variance: "welch"})` | Welch one-way analysis of means; does not pool group variances | `anova(groups, {variance: "welch"})` |
+| `kruskal_wallis(groups)` | Independent-group rank/distribution comparison with tie correction | `kruskal_wallis(groups)` |
+| `tukey_hsd(groups, options?)` | Genuine Tukey-Kramer all-pairs procedure after a defensible classical ANOVA | `tukey_hsd(groups, {confidence: 0.95})` |
+| `pairwise_ttest(groups, options?)` | Pairwise Welch/Student tests with an explicit multiplicity adjustment | `pairwise_ttest(groups, {variance: "welch", adjust: "holm"})` |
 
-> **Post-hoc comparisons:** Follow a significant ANOVA with pairwise tests and p-value correction:
+> **Post-hoc comparisons:** The method name matters. `tukey_hsd(groups)` uses
+> the studentized-range distribution and simultaneous family-wise intervals.
+> `pairwise_ttest(groups, {variance: "welch", adjust: "holm"})` performs
+> separate Welch tests and applies Holm's correction. Neither should be called
+> the other.
 >
-> ```text
-# Conceptual or diagnostic example; not directly executable.
-> # Pairwise t-tests with Bonferroni correction
-> let pvals = []
-> for i in 0..len(groups) {
->   for j in (i+1)..len(groups) {
->     let result = ttest(groups[i], groups[j])
->     pvals = pvals + [result.p_value]
->   }
-> }
-> let adjusted = p_adjust(pvals, "bonferroni")
+> ```biolang
+> let global = anova(groups, {variance: "welch"})
+> let follow_up = pairwise_ttest(groups, {
+>   variance: "welch",
+>   adjust: "holm"
+> })
 > ```
 
 ### Categorical Data

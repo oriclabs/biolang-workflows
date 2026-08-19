@@ -30,7 +30,7 @@ for i in 1..20000 {
   # Both groups drawn from the same distribution — no real differences
   let group1 = rnorm(10, 0, 1)
   let group2 = rnorm(10, 0, 1)
-  let result = ttest(group1, group2)
+  let result = ttest(group1, group2, {variance: "welch"})
   p_values = append(p_values, result.p_value)
 }
 
@@ -359,7 +359,7 @@ for i in 1..20000 {
     let group2 = rnorm(10, 0, 1)
     is_true = append(is_true, 0)
   }
-  let result = ttest(group1, group2)
+  let result = ttest(group1, group2, {variance: "welch"})
   p_values = append(p_values, result.p_value)
   fold_changes = append(fold_changes, mean(group2) - mean(group1))
 }
@@ -460,7 +460,7 @@ for i in 1..100 {
   } else {
     rnorm(10, 0, 1)
   }
-  p_vals = append(p_vals, ttest(g1, g2).p_value)
+  p_vals = append(p_vals, ttest(g1, g2, {variance: "welch"}).p_value)
 }
 
 # Sort p-values
@@ -488,7 +488,7 @@ let null_ps = []
 for i in 1..5000 {
   let g1 = rnorm(10, 0, 1)
   let g2 = rnorm(10, 0, 1)
-  null_ps = append(null_ps, ttest(g1, g2).p_value)
+  null_ps = append(null_ps, ttest(g1, g2, {variance: "welch"}).p_value)
 }
 
 # Scenario 2: 20% true signal (spike near 0 + uniform)
@@ -500,7 +500,7 @@ for i in 1..5000 {
   } else {
     rnorm(10, 0, 1)
   }
-  mixed_ps = append(mixed_ps, ttest(g1, g2).p_value)
+  mixed_ps = append(mixed_ps, ttest(g1, g2, {variance: "welch"}).p_value)
 }
 
 histogram(null_ps, {title: "All Null: Uniform p-value Distribution", x_label: "p-value", bins: 20})

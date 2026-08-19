@@ -15,21 +15,23 @@
 
 ## The Problem
 
-Dr. James Park has RNA-seq data from 12 tumor samples. He needs to identify genes that differ between treatment and control groups. He considers a t-test for a difference in means, then notices that raw sequencing abundance has a mean-variance relationship, zeros, and library-size structure that a simple gene-wise normal model does not represent.
+You open an RNA-seq count matrix. Most entries are small or zero, while a few are very large. Samples also have different library sizes, and highly expressed genes vary more than lowly expressed genes.
 
-Gene FPKM values range from 0 to 50,000. Most genes sit near zero, with a handful expressed at astronomical levels. The histogram looks nothing like a bell curve — it is a massive spike at zero with a long right tail stretching to infinity. He runs the t-test anyway. Out of 20,000 genes, 4,700 come back "significant" at p < 0.05. That is 23.5% of all genes, far more than seems biologically plausible for this modest treatment.
+This shape is useful information. It tells you that raw counts are non-negative, discrete, and have a mean-variance relationship. A gene-by-gene t-test on raw counts ignores that structure. Count models can represent it directly; log-like or variance-stabilized values may be useful for plots and distance-based exploration.
 
-This is an illustrative warning, not a measured analysis: those 4,700 calls could reflect treatment effects, confounding, multiplicity, mean-variance dependence, or a mismatched model. A t-test concerns a mean and the sampling behaviour of its statistic; it does not require every raw observation to look perfectly normal. For RNA-seq counts, methods that model counts, library size, and dispersion are usually more defensible than gene-wise tests on raw FPKM values.
+The lesson is not “skewed data forbids a t-test.” A method's assumptions concern a particular outcome, statistic, residual, or sampling process. First identify what is being modelled; then inspect whether the approximation is useful.
 
 ## What Is a Distribution?
 
-A distribution is a recipe that tells you how likely each possible value is. Think of it as a map of a city, where the height at each point represents how many people live there. Downtown is a tall spike (many people). The suburbs are a gentle slope. The surrounding farmland is nearly flat.
+The **observed distribution** is how your measured values are arranged. A histogram, density plot, dot plot, or frequency table helps you see it.
 
-Every dataset has an underlying distribution — the theoretical shape that generated the data you observe. When you draw a histogram of your data, you are estimating this shape from a finite sample. With 10 data points, the histogram is choppy and unreliable. With 10,000, it smooths out and begins to reveal the true underlying curve.
+A **probability distribution** is a mathematical model for possible values and their probabilities. It is a simplified description, not a hidden curve that every dataset must perfectly follow.
 
-Why does this matter? Statistical procedures rely on assumptions about sampling, dependence, model form, and sometimes a distribution. A t-test's normal model concerns group outcomes or paired differences under its derivation; regression diagnostics focus on conditional residual behaviour; a chi-square approximation needs adequate expected counts; Poisson regression assumes a conditional count mean/variance structure. Departures matter by degree and purpose, so inspect their effect rather than using one pass/fail shape test.
+Why does this matter? Different measurements need different descriptions. Counts cannot be negative. Proportions stay between 0 and 1. Survival observations may be censored. Repeated measurements from one patient are related. The model should respect those facts.
 
-> **Key insight:** Treat a model as an explicit approximation. State its estimand and assumptions, inspect diagnostics and sensitivity analyses, and interpret uncertainty conditionally on those choices.
+> **Technical detail:** A t-test models a mean difference and its sampling behaviour; regression diagnostics usually examine conditional residuals; chi-square approximations need adequate expected counts; and Poisson regression links a conditional count mean to its variance. Do not reduce all of these questions to “Does the raw histogram look normal?”
+
+> **Key insight:** A distribution is a useful approximation when it respects the measurement, design, and scientific question closely enough for the intended conclusion.
 
 ## The Normal Distribution
 
@@ -100,9 +102,23 @@ The curve is perfectly symmetric around &mu;. It extends infinitely in both dire
 | &mu; &plusmn; 1&sigma; | 68.3% | About two-thirds of data |
 | &mu; &plusmn; 2&sigma; | 95.4% | Nearly all data |
 | &mu; &plusmn; 3&sigma; | 99.7% | Almost everything |
-| Beyond 3&sigma; | 0.3% | Extreme outliers |
+| Beyond 3&sigma; | About 0.27% | Rare under a normal model; inspect rather than automatically remove |
 
 For an approximately normal reference distribution, about 0.27% of observations lie beyond ±3 SD. Crossing that line is a review flag, not a diagnosis: it may be a valid tail observation, a different subgroup, a recording problem, or evidence that mean/SD is the wrong descriptive frame.
+
+BioLang can generate the same teaching diagram in a notebook or as an ASCII
+bell curve in a terminal. Supplying real observations adds their measured
+coverage beside the theoretical reference; it does not declare them normal.
+
+```bio
+import "statistics" as stat
+
+# Notebook or web: SVG, with canvas/PNG fallback in exported HTML.
+stat.normal_diagram()
+
+# Terminal: the same idea without graphics support.
+println(stat.normal_diagram([], {format: "ascii"}))
+```
 
 ### Biological Examples of Normality
 
@@ -123,25 +139,28 @@ The normal distribution is a terrible model for:
 - Any data with a hard boundary (concentrations cannot be negative)
 
 ```bio
+import "statistics" as stat
+
 set_seed(42)
 # Generate and visualize normal data
 let heights = rnorm(5000, 170, 8)
 
 histogram(heights, {bins: 50, title: "Adult Heights (cm) — Normal Distribution"})
+stat.normal_diagram(heights)
 let stats = summary(heights)
 print(f"Mean: {stats.mean:.1}, Median: {stats.median:.1}, Skewness: {stats.skewness:.3}")
-# Mean and median nearly identical; skewness near zero — hallmarks of normality
+# Similar mean/median and low skewness are consistent with symmetry, not proof of normality
 ```
 
 ## The Log-Normal Distribution
 
 Some positive abundance measurements are reasonably described by a **log-normal** model: the data are skewed while their logarithms are closer to symmetric. Raw sequencing counts are discrete and commonly require count-specific sampling models; zeros, mixtures, and detection limits also prevent a universal log-normal claim.
 
-### Why Gene Expression Is Log-Normal
+### Why Multiplicative Processes Can Look Log-Normal
 
-Gene regulation is a cascade of multiplicative processes. A transcription factor binds (or doesn't), an enhancer activates (fold-change), mRNA is stabilized (half-life multiplied), ribosomes translate at varying rates (multiplied efficiency). When effects multiply rather than add, the result is log-normal, not normal.
+Some biological effects are naturally described as fold changes. If several positive factors multiply, taking a logarithm turns their product into a sum. Under suitable conditions, that sum may be approximately normal, which makes the original positive values approximately log-normal.
 
-This is a mathematical fact: if X = Y&#x2081; &times; Y&#x2082; &times; ... &times; Y&#x2099; and the Y values are independent, then log(X) = log(Y&#x2081;) + log(Y&#x2082;) + ... + log(Y&#x2099;). Sums of independent variables tend toward normal (by the Central Limit Theorem), so log(X) is approximately normal, meaning X is log-normal.
+This is a possible mechanism, not a universal law of gene expression. Sequencing counts are discrete; zeros, detection limits, mixtures of cell types, bursts, batches, and normalization all affect the observed shape.
 
 ### Logarithms: Change the Question Deliberately
 
@@ -597,20 +616,20 @@ curve(dnorm(x, mean(data), sd(data)), add = TRUE, col = "red")
 
 ## Why This Matters for Testing
 
-Here is the critical connection between today's material and the rest of the book:
+The observed shape narrows the options, but it does not select the method by itself:
 
-| If your data is... | Then you can use... | But NOT... |
+| Data clue | A useful candidate to investigate | Still check |
 |---|---|---|
-| Normal | t-test, ANOVA, Pearson correlation | — |
-| Log-normal | t-test after log-transform | t-test on raw values |
-| Poisson counts | Poisson regression, exact tests | t-test |
-| Overdispersed counts | Negative binomial (DESeq2, edgeR) | Poisson, t-test |
-| Non-normal, unknown | Mann-Whitney, Kruskal-Wallis | t-test, ANOVA |
-| Bounded (0,1) | Beta regression, logit transform | Linear regression |
+| Roughly symmetric continuous outcome | Mean/SD summaries; a linear-model view | Design, residuals, influence, variance, estimand |
+| Positive values with meaningful ratios | Log-scale preview or log-linked model | Zeros, interpretation, mixtures, data-generating process |
+| Counts | Poisson or negative-binomial family | Exposure, overdispersion, zero structure, dependence |
+| Ordinal outcome | Ordinal or rank-based method | Pairing, ties, target interpretation |
+| Proportion in [0,1] | Binomial, beta, or another bounded model | Denominator, exact zeros/ones, repeated observations |
+| Time to an event | Survival method | Censoring, competing events, time-varying effects |
 
-Choosing the wrong test because you assumed the wrong distribution is one of the most common errors in computational biology. Dr. Park's mistake from our opening scenario — running a t-test on raw FPKM values — is committed daily in bioinformatics labs around the world.
+Choosing a model from the name of a distribution alone is unsafe. For RNA-seq, keep the data layer and task clear: raw counts for count-based inference, and an explicitly recorded transformed representation when it helps visualization or exploration.
 
-> **Key insight:** The distribution is not a detail. It is the foundation. Get it right, and your downstream analysis is trustworthy. Get it wrong, and no amount of sophisticated testing can rescue your conclusions.
+> **Key insight:** Use shape as evidence, not as a traffic light. A defensible analysis combines the outcome type, experimental unit, dependence, scientific question, model diagnostics, and sensitivity to reasonable alternatives.
 
 ## Exercises
 
@@ -657,7 +676,7 @@ let lambdas = rnorm(500, 8.0, 3.0) |> map(|x| max(x, 0.1))
 
 ### Exercise 3: Transform and Test
 
-Take a skewed dataset, find the right transformation, and verify normality.
+Take a skewed dataset, preview a scientifically meaningful transformation, and compare what changes.
 
 ```bio
 set_seed(42)
@@ -667,7 +686,7 @@ let protein_abundance = rnorm(300, 4, 1.2) |> map(|x| exp(x))
 # TODO: Check normality with normal_qq_plot() — is it normal?
 # TODO: Apply log transform
 # TODO: Plot histogram of transformed data
-# TODO: Check normality of transformed data with normal_qq_plot()
+# TODO: Inspect the transformed Q-Q plot; note improvements and remaining departures
 # TODO: Compare skewness before and after
 ```
 
@@ -689,14 +708,14 @@ let mystery = rbinom(1000, 50, 0.15)
 
 ## Key Takeaways
 
-- A **distribution** is the theoretical shape describing how likely each value is. Every dataset has one, and every statistical test assumes one.
-- The **normal distribution** arises from additive effects and is defined by mean and standard deviation. It is appropriate for measurement error and many physiological traits.
+- An **observed distribution** describes measured values; a **probability distribution** is a mathematical model for possible values and probabilities.
+- The **normal distribution** is defined by a mean and standard deviation and can be a useful approximation for some additive measurements or residual processes.
 - **Expression has no single universal distribution** — raw counts, normalized abundance, transformed values, genes, and samples answer different questions. Choose a count model or transformation from the measurement process and inspect model residuals.
 - The **Poisson distribution** models count data (reads, mutations) with the key property that mean equals variance. When variance exceeds the mean (overdispersion), use the negative binomial instead.
 - The **binomial distribution** models fixed trials with a success probability — relevant for genotype frequencies and allele sampling.
-- **Q-Q plots** are the most informative visual diagnostic for distribution checking. The **Shapiro-Wilk test** provides a formal hypothesis test for normality.
-- Choosing the right distribution is not optional — it determines which statistical tests are valid and which will produce misleading results.
+- **Q-Q plots**, raw points, histograms, and influence checks show different aspects of shape. **Shapiro-Wilk** tests an exact normal null model but should not select an analysis by itself.
+- Distributional assumptions are one part of method choice; outcome type, experimental design, dependence, variance, and the scientific estimand matter too.
 
 ## What's Next
 
-You now understand the shapes that biological data takes. But distributions describe what values are likely — which is just another way of saying they describe probabilities. Tomorrow, on Day 4, we formalize probability itself. You will learn to compute the chance that a child inherits a BRCA1 mutation, understand why a positive genetic test might mean less than you think (Bayes' theorem will surprise you), and discover why the prosecutor's fallacy has sent innocent people to prison. Probability is the language of uncertainty, and uncertainty is the native tongue of biology.
+You now have a vocabulary for observed shapes and probability models. Day 4 formalizes probability, conditional questions, Bayes' theorem, inheritance examples, and diagnostic-test interpretation. The emphasis is learning to distinguish P(A|B) from P(B|A), because reversing those questions changes the answer.

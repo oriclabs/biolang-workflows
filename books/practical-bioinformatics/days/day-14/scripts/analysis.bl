@@ -37,7 +37,7 @@ print("=== Step 2: t-tests ===\n")
 let normal = [5.2, 4.8, 5.1, 4.9, 5.3]
 let tumor = [8.1, 7.9, 8.5, 7.6, 8.3]
 
-let result = ttest(normal, tumor)
+let result = ttest(normal, tumor, {variance: "welch"})
 print(f"Two-sample t-test:")
 print(f"  t-statistic: {round(result.statistic, 3)}")
 print(f"  p-value: {result.pvalue}")
@@ -84,9 +84,9 @@ print("")
 
 # Follow-up pairwise comparisons
 let pairs = [
-    {name: "control vs low", result: ttest(ctrl, low_dose)},
-    {name: "control vs high", result: ttest(ctrl, high_dose)},
-    {name: "low vs high", result: ttest(low_dose, high_dose)},
+    {name: "control vs low", result: ttest(ctrl, low_dose, {variance: "welch"})},
+    {name: "control vs high", result: ttest(ctrl, high_dose, {variance: "welch"})},
+    {name: "low vs high", result: ttest(low_dose, high_dose, {variance: "welch"})},
 ]
 
 let raw_ps = pairs |> map(|p| p.result.pvalue)
@@ -175,7 +175,7 @@ for i in range(0, nrow(data)) {
     let fc = trt_mean / ctrl_mean
     let log2fc = log2(fc)
 
-    let test = ttest(ctrl_vals, trt_vals)
+    let test = ttest(ctrl_vals, trt_vals, {variance: "welch"})
 
     gene_stats = gene_stats + [{
         gene: gene,

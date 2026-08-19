@@ -23,7 +23,7 @@ This is the job of descriptive statistics. They are a useful early step before m
 
 ## What Are Descriptive Statistics?
 
-Descriptive statistics are summaries. Think of them as a movie trailer for your data. The full movie (the raw dataset) might be two hours long, but the trailer gives you the genre, the tone, and the key plot points in two minutes. A good trailer does not lie about the movie. A good set of descriptive statistics does not lie about the data.
+Descriptive statistics turn a long list of values into a small, readable description. They do not replace the raw data or a plot. They help you decide what to inspect next.
 
 There are three things you need to know about any dataset:
 1. **Center** — Where is the "middle" of the data?
@@ -32,16 +32,18 @@ There are three things you need to know about any dataset:
 
 ### Why Do These Three Matter?
 
-**Centre describes a reference point.** Depending on the question, this may be the equal-share balance point (mean), halfway observation (median), most common value (mode), or another centre. Whether Q35 is acceptable still depends on the instrument, protocol, and quality criteria; the centre alone cannot certify the run.
+**Centre asks, “Where is the data located?”** The mean is the balance point, the median is the halfway value, and the mode is the most frequent value. They answer different questions.
 
-**Spread describes variation among observations.** Two experiments might both report a mean IC50 of 12 nM, but one ranges from 11 to 13 while the other ranges from 2 to 45. That is different from uncertainty in the estimated mean: spread describes the observations, while a standard error or confidence interval describes precision of an estimate under a sampling model.
+**Spread asks, “How different are the observations?”** Two experiments can have the same mean IC50 of 12 nM while one stays between 11 and 13 and the other ranges from 2 to 45.
 
-**Shape gives modelling clues.** Many models make assumptions about errors, residuals, conditional outcomes, or sampling processes—not simply about the raw measurements. A right-skewed outcome can suggest a log-scale preview, a count model, or a robust summary, but the scientific estimand and design decide which is appropriate. Bimodality can be a clue to mixtures, batch effects, censoring, or subgroups; it is not by itself proof of two biological populations.
+**Shape asks, “How are values arranged?”** Look for a long tail, gaps, several peaks, bounds, or a pile of zeros. These are clues about the data—not automatic instructions to choose a test.
 
-> **Key insight:** Report centre with a compatible spread, retain a view of the full distribution, and state the measurement scale. Standard deviation is defined for skewed data, but it can be a poor description of a *typical* distance when the mean and tails dominate; median with IQR or MAD is often a useful companion.
+> **Important distinction:** SD and IQR describe variation among observations. Standard error and confidence intervals describe uncertainty in an estimate. A wide dataset is not necessarily a poorly estimated dataset if it also has many well-sampled observations.
+
+> **Key insight:** Pair the mean with SD when the mean is the centre you want to describe. Pair the median with IQR or MAD when a resistant summary is more useful. Keep a plot beside either pair.
 
 <div style="text-align: center; margin: 2em 0;">
-<svg width="680" height="280" viewBox="0 0 680 280" xmlns="http://www.w3.org/2000/svg" style="background: #fafbfc; border: 1px solid #e5e7eb; border-radius: 8px;">
+<svg width="680" height="280" viewBox="0 0 680 280" xmlns="http://www.w3.org/2000/svg" style="max-width: 100%; height: auto; background: #fafbfc; border: 1px solid #e5e7eb; border-radius: 8px;">
   <text x="340" y="28" text-anchor="middle" font-size="15" font-weight="bold" fill="#1e293b">The Three Pillars of Descriptive Statistics</text>
 
   <!-- Center -->
@@ -53,40 +55,40 @@ There are three things you need to know about any dataset:
   <line x1="125" y1="105" x2="125" y2="140" stroke="#dc2626" stroke-width="2" stroke-dasharray="4,3"/>
   <circle cx="125" cy="105" r="3" fill="#dc2626"/>
   <text x="125" y="160" text-anchor="middle" font-size="10" fill="#dc2626">mean / median</text>
-  <text x="125" y="180" text-anchor="middle" font-size="10" fill="#475569">Without center, you can't</text>
-  <text x="125" y="195" text-anchor="middle" font-size="10" fill="#475569">judge if a value is normal</text>
-  <text x="125" y="210" text-anchor="middle" font-size="10" fill="#475569">or alarming</text>
-  <text x="125" y="235" text-anchor="middle" font-size="10" font-style="italic" fill="#2563eb">Q35 = good run</text>
-  <text x="125" y="248" text-anchor="middle" font-size="10" font-style="italic" fill="#dc2626">Q15 = re-sequence</text>
+  <text x="125" y="180" text-anchor="middle" font-size="10" fill="#475569">Centre gives a reference</text>
+  <text x="125" y="195" text-anchor="middle" font-size="10" fill="#475569">but the protocol supplies</text>
+  <text x="125" y="210" text-anchor="middle" font-size="10" fill="#475569">the decision threshold</text>
+  <text x="125" y="235" text-anchor="middle" font-size="10" font-style="italic" fill="#2563eb">Q35: compare with criteria</text>
+  <text x="125" y="248" text-anchor="middle" font-size="10" font-style="italic" fill="#dc2626">Q15: investigate the run</text>
 
   <!-- Spread -->
   <rect x="245" y="50" width="190" height="200" rx="8" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
   <text x="340" y="75" text-anchor="middle" font-size="14" font-weight="bold" fill="#14532d">SPREAD</text>
-  <text x="340" y="95" text-anchor="middle" font-size="11" fill="#14532d">"How much can I trust it?"</text>
+  <text x="340" y="95" text-anchor="middle" font-size="11" fill="#14532d">"How different are the values?"</text>
   <line x1="285" y1="140" x2="395" y2="140" stroke="#6b7280" stroke-width="1"/>
   <!-- Tight distribution -->
   <path d="M 295,138 Q 310,125 320,108 Q 330,98 340,95 Q 350,98 360,108 Q 370,125 385,138" fill="none" stroke="#16a34a" stroke-width="2"/>
-  <text x="340" y="155" text-anchor="middle" font-size="9" fill="#16a34a">Tight = reliable</text>
+  <text x="340" y="155" text-anchor="middle" font-size="9" fill="#16a34a">Narrow = values are similar</text>
   <!-- Wide distribution hint -->
   <path d="M 285,138 Q 300,130 315,125 Q 340,118 365,125 Q 380,130 395,138" fill="none" stroke="#dc2626" stroke-width="1.5" stroke-dasharray="3,3"/>
-  <text x="340" y="170" text-anchor="middle" font-size="9" fill="#dc2626">Wide = noisy</text>
-  <text x="340" y="195" text-anchor="middle" font-size="10" fill="#475569">Same mean, but different</text>
-  <text x="340" y="210" text-anchor="middle" font-size="10" fill="#475569">confidence in the result</text>
-  <text x="340" y="235" text-anchor="middle" font-size="10" font-style="italic" fill="#16a34a">IC50: 11-13 nM (trust it)</text>
-  <text x="340" y="248" text-anchor="middle" font-size="10" font-style="italic" fill="#dc2626">IC50: 2-45 nM (don't)</text>
+  <text x="340" y="170" text-anchor="middle" font-size="9" fill="#dc2626">Wide = values differ more</text>
+  <text x="340" y="195" text-anchor="middle" font-size="10" fill="#475569">Same mean, different</text>
+  <text x="340" y="210" text-anchor="middle" font-size="10" fill="#475569">biological variation</text>
+  <text x="340" y="235" text-anchor="middle" font-size="10" font-style="italic" fill="#16a34a">IC50: 11-13 nM (narrow)</text>
+  <text x="340" y="248" text-anchor="middle" font-size="10" font-style="italic" fill="#dc2626">IC50: 2-45 nM (wide)</text>
 
   <!-- Shape -->
   <rect x="460" y="50" width="190" height="200" rx="8" fill="#f3e8ff" stroke="#7c3aed" stroke-width="1.5"/>
   <text x="555" y="75" text-anchor="middle" font-size="14" font-weight="bold" fill="#4c1d95">SHAPE</text>
-  <text x="555" y="95" text-anchor="middle" font-size="11" fill="#4c1d95">"Which tools are safe?"</text>
+  <text x="555" y="95" text-anchor="middle" font-size="11" fill="#4c1d95">"How are values arranged?"</text>
   <line x1="500" y1="140" x2="610" y2="140" stroke="#6b7280" stroke-width="1"/>
   <!-- Skewed distribution -->
   <path d="M 500,138 Q 515,130 530,110 Q 540,100 545,98 Q 555,100 570,115 Q 590,130 610,138" fill="none" stroke="#7c3aed" stroke-width="2"/>
-  <text x="555" y="155" text-anchor="middle" font-size="9" fill="#7c3aed">Skewed → wrong test = wrong answer</text>
-  <text x="555" y="195" text-anchor="middle" font-size="10" fill="#475569">Bell-shaped → t-test OK</text>
-  <text x="555" y="210" text-anchor="middle" font-size="10" fill="#475569">Skewed → inspect scale and model</text>
-  <text x="555" y="225" text-anchor="middle" font-size="10" fill="#475569">Bimodal → two populations?</text>
-  <text x="555" y="248" text-anchor="middle" font-size="10" font-style="italic" fill="#7c3aed">#1 reason results fail to replicate</text>
+  <text x="555" y="155" text-anchor="middle" font-size="9" fill="#7c3aed">Shape gives clues, not a verdict</text>
+  <text x="555" y="195" text-anchor="middle" font-size="9" fill="#475569">Symmetric: compare mean and median</text>
+  <text x="555" y="210" text-anchor="middle" font-size="9" fill="#475569">Skewed: compare robust/log views</text>
+  <text x="555" y="225" text-anchor="middle" font-size="9" fill="#475569">Several peaks: inspect groups/batches</text>
+  <text x="555" y="248" text-anchor="middle" font-size="9" font-style="italic" fill="#7c3aed">Design still decides the analysis</text>
 </svg>
 </div>
 
@@ -100,11 +102,11 @@ The mean is the balance point. If your data values were weights placed along a r
 
 **Formula:** x&#x0304; = (1/n) &sum; x&#x1d62;
 
-The mean uses every data point, which is both its strength and its weakness. It is the most efficient estimator of center when data is symmetric with no outliers. But it is exquisitely sensitive to extreme values.
+The mean uses every data point, which is both its strength and its weakness. Under a normal sampling model it has especially convenient statistical properties. In any dataset, a few extreme values can move it substantially.
 
 **Example:** Five gene expression values (FPKM): 12, 15, 14, 13, 16. Mean = 14.0. Reasonable.
 
-Now add one highly expressed gene: 12, 15, 14, 13, 16, 5000. Mean = 845.0. The mean has been dragged from 14 to 845 by a single outlier. It no longer represents "typical" expression.
+Now add one unusually large observation: 12, 15, 14, 13, 16, 5000. Mean = 845.0. The mean has been dragged from 14 to 845 by one value. It no longer describes a typical observation, although it still remains the arithmetic balance point.
 
 > **Common pitfall:** Expression summaries answer different questions. The arithmetic mean describes equal-share abundance and is relevant to totals; the median describes a typical sample and resists a long tail. Inspect the distribution and measurement scale instead of declaring one universally better.
 
@@ -114,7 +116,7 @@ The median is the value that splits the data in half: 50% of observations fall b
 
 For our outlier-contaminated expression data: sorted = 12, 13, 14, 15, 16, 5000. Median = (14 + 15) / 2 = 14.5. The outlier barely matters.
 
-The median is **robust** — it resists the pull of extreme values. This makes it the preferred measure of center for skewed distributions, which are the norm in biology.
+The median is **robust**—it resists the pull of extreme values. It is often useful for a skewed distribution when the scientific question concerns a typical observation rather than an arithmetic total or balance point.
 
 ### Mode (Most Frequent Value)
 
@@ -720,11 +722,11 @@ let samples = {
 - Descriptive statistics compress large datasets into interpretable summaries of center, spread, and shape.
 - The **mean** is efficient for an additive expectation but sensitive to extremes; the **median** is robust and describes a ranked halfway point. For skewed data, report the pair that matches the estimand and often show both.
 - **Standard deviation** measures absolute spread; **IQR** is robust to outliers; **CV** enables comparison across different scales.
-- **Skewness** and **kurtosis** reveal whether your data's shape matches the assumptions of common statistical tests.
+- **Skewness** and **kurtosis** summarize aspects of shape. They are clues for visualization and modelling, not pass/fail assumption tests.
 - **Always visualize** your data with histograms and box plots before computing any test. Summary statistics can hide multimodal distributions, outliers, and other structural features.
 - `summary()` in BioLang provides comprehensive descriptive statistics in a single function call.
 - Descriptive statistics are not optional preliminaries — they are the foundation of every analysis.
 
 ## What's Next
 
-You now know how to summarize data, but you may have noticed something: we keep saying "normally distributed" and "skewed" without precisely defining what a distribution is. Tomorrow, on Day 3, we dive into the mathematical shapes that biological data follows — the normal distribution, the log-normal, the Poisson, and the binomial. You will learn why gene expression data refuses to be normal, why read counts follow a Poisson process (sort of), and how to test whether your data fits the distribution you think it does. Understanding distributions is the key to choosing the right statistical test — and avoiding the wrong one.
+You now know how to summarize data, but “normal,” “skewed,” and “count” still need careful definitions. Day 3 introduces observed and probability distributions, shows what a log scale changes, and compares normal, log-normal, Poisson, and binomial models. The goal is to use shape as one source of evidence while keeping the measurement process and design in view.

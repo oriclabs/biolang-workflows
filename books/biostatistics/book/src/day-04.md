@@ -15,21 +15,21 @@
 
 ## The Problem
 
-Maria and David sit in a genetic counselor's office. The air is still. Maria has just learned she carries a pathogenic BRCA1 mutation — a variant that dramatically increases lifetime risk of breast and ovarian cancer. They are planning to start a family and they need answers.
+Suppose one parent has a heterozygous pathogenic variant with autosomal-dominant inheritance. For each pregnancy, the probability of transmitting that variant is 0.5.
 
-What is the probability their child inherits the mutation? If the child inherits it, what is the probability she develops breast cancer by age 70? They are considering preimplantation genetic testing — if the test says the embryo is mutation-free, how confident can they be? The counselor pulls out a notepad and begins writing probabilities.
+That inheritance probability is not the same as the probability of developing disease. Disease risk may also depend on the particular variant, age, sex, family history, environment, available evidence, and the clinical definition being used.
 
-This is not an abstract exercise. These numbers will determine whether Maria and David proceed with natural conception, pursue IVF with genetic screening, or consider adoption. The difference between a 50% risk and a 5% risk changes lives. Understanding how to compute, combine, and interpret probabilities is not just statistics — in genetics, it is clinical care.
+Probability helps keep these questions separate: **Was the variant inherited? Given inheritance, what outcome is being considered? Over what time period? How certain is the evidence?** Real genetic counselling uses current clinical guidance and individual history; this chapter teaches the arithmetic, not personal medical advice.
 
 ## What Is Probability?
 
 Probability is a number between 0 and 1 that quantifies how likely an event is to occur. Zero means impossible. One means certain. Everything interesting happens in between.
 
-Think of probability as a weather forecast. When the forecaster says "70% chance of rain," she means: in historical situations with similar atmospheric conditions, it rained about 70% of the time. She is not saying it will rain exactly 70% of the total rainfall. She is quantifying uncertainty about a future event using past data and models.
+Think of probability as a weather forecast. “70% chance of rain” describes uncertainty about whether rain will occur under the forecast model. It does not mean that 70% of the day or 70% of the area must receive rain.
 
 In biology, we use probability constantly:
 - The probability a child inherits a specific allele from a heterozygous parent: 0.5
-- The probability a random human carries at least one pathogenic BRCA1 variant: roughly 1/400
+- The probability of carrying a particular pathogenic variant: estimated from a defined population and evidence source
 - The probability that a drug produces a response in a given cancer type: varies, but measured in clinical trials
 - The probability that a sequencing read is mapped incorrectly: the mapping quality score encodes this directly
 
@@ -97,13 +97,15 @@ The probability of event A **and** event B both occurring depends on whether the
 **Independent events** (one does not affect the other):
 P(A and B) = P(A) &times; P(B)
 
-The probability that two unrelated people both carry a BRCA1 mutation: P(carrier) &times; P(carrier) = (1/400) &times; (1/400) = 1/160,000.
+For a simple arithmetic example, suppose two unrelated people independently have probability 0.01 of carrying a specified variant. Then P(both carry) = 0.01 &times; 0.01 = 0.0001. In real populations, ancestry or relatedness can make the independence assumption inappropriate.
 
 **Dependent events** (one affects the other):
 P(A and B) = P(A) &times; P(B|A)
 
-where P(B|A) is the probability of B **given that** A has occurred. If a mother carries BRCA1 (event A), the probability her daughter both inherits it (B) and develops cancer by 70 (C) is:
-P(B and C) = P(B|A) &times; P(C|B) = 0.5 &times; 0.72 = 0.36.
+where P(B|A) is the probability of B **given that** A has occurred. Suppose a variant has inheritance probability 0.5 and, purely for illustration, an outcome occurs by a specified age with probability 0.60 given inheritance. Then:
+P(inherits and outcome) = 0.5 &times; 0.60 = 0.30.
+
+The 0.60 is an invented teaching value. Do not reuse it as a clinical risk estimate.
 
 ### The Complement Rule
 
@@ -121,16 +123,16 @@ This is where most people's intuition breaks down, because **P(A|B) is not the s
 
 ### The Critical Distinction
 
-- P(cancer | BRCA1 mutation) &asymp; 0.72 — If you carry BRCA1, your lifetime breast cancer risk is about 72%.
-- P(BRCA1 mutation | cancer) &asymp; 0.05 — If you have breast cancer, the probability it is due to BRCA1 is only about 5%.
+- P(disease | variant): among people with the variant, how often does the defined disease outcome occur by the stated time?
+- P(variant | disease): among people with that disease, how often is the variant present?
 
 These are completely different numbers answering completely different questions. Confusing them is called the **inverse probability fallacy**, and it has real consequences in medicine, law, and genetics.
 
 ### The Prosecutor's Fallacy
 
-In forensic genetics, the prosecutor's fallacy works like this: "The probability of this DNA match occurring by chance is 1 in 10 million. Therefore, the probability the defendant is innocent is 1 in 10 million."
+In forensic genetics, the prosecutor's fallacy works like this: “The probability of this DNA profile match under an unrelated-person model is very small. Therefore, the probability the defendant is innocent is equally small.”
 
-This is logically wrong. P(match | innocent) is not P(innocent | match). In a city of 8 million people, you would expect roughly one other person to match by chance. If the only evidence is the DNA match, the probability of innocence might be closer to 50%, not 1 in 10 million.
+This is logically wrong. P(match | a specified model) is not P(innocence | match). The latter also depends on how the person was identified, the relevant population, laboratory error, relatedness, database searching, and other evidence.
 
 The same fallacy appears in genetic testing: "The test is 99% accurate" does not mean a positive result is 99% likely to be correct. The answer depends on how common the condition is — which brings us to Bayes' theorem.
 
@@ -345,11 +347,11 @@ For discrete random variables (counts, genotypes), the **probability mass functi
 
 ```bio
 # Binomial PMF: probability of exactly k successes in n trials
-# Scenario: 4 children, mother is BRCA1 carrier (p = 0.5)
+# Scenario: 4 independent pregnancies with a heterozygous parent (p = 0.5)
 let n_children = 4
 let p_inherit = 0.5
 
-print("Number of children inheriting BRCA1:")
+print("Number of children inheriting the variant:")
 for k in 0..5 {
     let prob = dbinom(k, n_children, p_inherit)
     print(f"  {k} children: {prob:.4} ({prob * 100:.1}%)")
@@ -433,23 +435,19 @@ print(f"Chi-square statistic: {chi2:.3}")
 print(f"Deviation from HWE: {if chi2 > 3.84 then "Significant" else "Not significant"}")
 ```
 
-## Carrier Probability Calculations
+## Inheritance Probability Calculations
 
-Returning to Maria and David's consultation:
+The following example calculates inheritance only. It does not estimate disease penetrance or recommend a clinical decision.
 
 ```bio
-# Genetic counseling probability calculator
-
-# Maria is a BRCA1 carrier (heterozygous)
-# David is not a carrier (assumed)
-
-# Autosomal dominant: 50% chance each child inherits
+# Teaching calculator: heterozygous autosomal-dominant inheritance
+# Each pregnancy is treated as an independent 50% inheritance event.
 let p_inherit = 0.5
 
 # They want 3 children
 let n_children = 3
 
-print("=== Genetic Counseling: BRCA1 Inheritance ===")
+print("=== Illustrative Variant Inheritance ===")
 print("")
 
 # Probability none of 3 children inherit
@@ -464,20 +462,9 @@ print(f"P(exactly 1 inherits):  {p_one:.4} ({p_one * 100:.1}%)")
 let p_at_least_one = 1.0 - p_none
 print(f"P(at least 1 inherits): {p_at_least_one:.4} ({p_at_least_one * 100:.1}%)")
 
-print("")
-print("=== Conditional Cancer Risk ===")
-# If a daughter inherits BRCA1, lifetime breast cancer risk ~ 72%
-let p_cancer_given_brca = 0.72
-
-# P(inherits AND develops cancer)
-let p_inherit_and_cancer = p_inherit * p_cancer_given_brca
-print(f"P(daughter inherits AND gets cancer): {p_inherit_and_cancer:.3} ({p_inherit_and_cancer * 100:.1}%)")
-
-# P(daughter gets cancer by 70 | she is female)
-# Must account for 50% chance of being female
-let p_affected_daughter = 0.5 * p_inherit * p_cancer_given_brca
-print(f"P(random child is affected daughter): {p_affected_daughter:.3} ({p_affected_daughter * 100:.1}%)")
 ```
+
+> **Clinical caution:** Inheritance probability and disease penetrance are different quantities. Penetrance estimates can change as evidence develops and may vary across populations and variants. Use a current clinical source for counselling; do not substitute this teaching calculation.
 
 ## Python and R Equivalents
 
@@ -561,7 +548,7 @@ let prevalence = 0.01
 
 ### Exercise 3: Carrier Frequency
 
-Cystic fibrosis is autosomal recessive with a carrier frequency of approximately 1 in 25 among Europeans.
+For a simplified autosomal-recessive teaching example, suppose a defined population has carrier frequency 1 in 25. Real carrier frequencies vary across populations, variant definitions, and evidence sources.
 
 ```bio
 let carrier_freq = 1.0 / 25.0
@@ -587,7 +574,8 @@ let error_rate = 0.01
 
 # TODO: Under the null (all errors), what is P(5+ alt reads)?
 # Use the binomial: P(X >= 5 | n=50, p=0.01) = 1 - pbinom(4, 50, 0.01)
-# TODO: Is this consistent with error alone, or likely a real variant?
+# TODO: Is this simple independent-error model compatible with the observation?
+# A real caller must also consider strand, position, mapping, context, contamination, and prior evidence.
 ```
 
 ## Key Takeaways

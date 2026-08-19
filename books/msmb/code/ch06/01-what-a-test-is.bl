@@ -18,7 +18,7 @@ let trials = 2000
 let rejections = range(0, trials) |> count_if(|_| {
     let a = rnorm(12, 10.0, 2.0)
     let b = rnorm(12, 10.0, 2.0)
-    ttest(a, b).p_value < 0.05
+    ttest(a, b, {variance: "welch"}).p_value < 0.05
 })
 
 println(f"  {trials} comparisons of two identical populations")
@@ -32,7 +32,7 @@ println("")
 
 println("== The distribution of p under the null ==")
 set_seed(7)
-let null_ps = range(0, 3000) |> map(|_| ttest(rnorm(12, 10.0, 2.0), rnorm(12, 10.0, 2.0)).p_value)
+let null_ps = range(0, 3000) |> map(|_| ttest(rnorm(12, 10.0, 2.0), rnorm(12, 10.0, 2.0), {variance: "welch"}).p_value)
 println(hist(null_ps, 10))
 println("Flat. When the null is true, p is uniform on [0,1] - every value is")
 println("equally likely, and that is what makes the threshold interpretable.")
@@ -54,7 +54,7 @@ println("  effect (sd)     n     power")
     let n = c[1]
     set_seed(21)
     let detected = range(0, 600) |> count_if(|_| {
-        ttest(rnorm(n, 10.0, sd), rnorm(n, 10.0 + d * sd, sd)).p_value < 0.05
+        ttest(rnorm(n, 10.0, sd), rnorm(n, 10.0 + d * sd, sd), {variance: "welch"}).p_value < 0.05
     })
     println(f"  {d:>9.2f}   {n:>5}    {detected * 100.0 / 600.0:>5.1f}%")
 })
@@ -76,18 +76,18 @@ println("")
 println("  data                          false positive rate at 5%")
 
 set_seed(11)
-let normal_fp = range(0, 1500) |> count_if(|_| ttest(rnorm(10, 0.0, 1.0), rnorm(10, 0.0, 1.0)).p_value < 0.05)
+let normal_fp = range(0, 1500) |> count_if(|_| ttest(rnorm(10, 0.0, 1.0), rnorm(10, 0.0, 1.0), {variance: "welch"}).p_value < 0.05)
 println(f"  normal, equal spread                   {normal_fp * 100.0 / 1500.0:>5.1f}%")
 
 set_seed(12)
-let unequal_fp = range(0, 1500) |> count_if(|_| ttest(rnorm(10, 0.0, 1.0), rnorm(10, 0.0, 5.0)).p_value < 0.05)
+let unequal_fp = range(0, 1500) |> count_if(|_| ttest(rnorm(10, 0.0, 1.0), rnorm(10, 0.0, 5.0), {variance: "welch"}).p_value < 0.05)
 println(f"  normal, one group 5x wider             {unequal_fp * 100.0 / 1500.0:>5.1f}%")
 
 set_seed(13)
 let skew_fp = range(0, 1500) |> count_if(|_| {
     let a = range(0, 10) |> map(|_| pow(10.0, rnorm(1, 0.0, 1.0)[0]))
     let b = range(0, 10) |> map(|_| pow(10.0, rnorm(1, 0.0, 1.0)[0]))
-    ttest(a, b).p_value < 0.05
+    ttest(a, b, {variance: "welch"}).p_value < 0.05
 })
 println(f"  heavily skewed (log-normal)            {skew_fp * 100.0 / 1500.0:>5.1f}%")
 
@@ -95,7 +95,7 @@ set_seed(14)
 let log_fp = range(0, 1500) |> count_if(|_| {
     let a = range(0, 10) |> map(|_| rnorm(1, 0.0, 1.0)[0])
     let b = range(0, 10) |> map(|_| rnorm(1, 0.0, 1.0)[0])
-    ttest(a, b).p_value < 0.05
+    ttest(a, b, {variance: "welch"}).p_value < 0.05
 })
 println(f"  the same data, log transformed         {log_fp * 100.0 / 1500.0:>5.1f}%")
 println("")

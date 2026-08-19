@@ -136,7 +136,7 @@ Use this when you have two separate groups of subjects:
 let normal = [5.2, 4.8, 5.1, 4.9, 5.3]
 let tumor = [8.1, 7.9, 8.5, 7.6, 8.3]
 
-let result = ttest(normal, tumor)
+let result = ttest(normal, tumor, {variance: "welch"})
 println(f"t-statistic: {round(result.statistic, 3)}")
 println(f"p-value: {result.pvalue}")
 println(f"Significant: {result.pvalue < 0.05}")
@@ -155,7 +155,7 @@ The t-statistic of -18.9 is very large in magnitude, meaning the groups are far 
 **Assumptions of the t-test:**
 1. Data are roughly normally distributed (or sample size > 30)
 2. The two groups are independent
-3. Variances are similar (BioLang uses Welch's t-test by default, which relaxes this)
+3. Variances are similar for a pooled test; the examples request Welch explicitly so equal variance is not required
 
 ### Paired t-test
 
@@ -264,9 +264,9 @@ The F-statistic compares the variance *between groups* to the variance *within g
 ```bio
 # Follow-up: which pairs differ?
 let pairs = [
-    {name: "control vs low", result: ttest(control, low_dose)},
-    {name: "control vs high", result: ttest(control, high_dose)},
-    {name: "low vs high", result: ttest(low_dose, high_dose)},
+    {name: "control vs low", result: ttest(control, low_dose, {variance: "welch"})},
+    {name: "control vs high", result: ttest(control, high_dose, {variance: "welch"})},
+    {name: "low vs high", result: ttest(low_dose, high_dose, {variance: "welch"})},
 ]
 
 # Collect raw p-values and adjust
@@ -603,7 +603,7 @@ for i in range(0, nrow(data)) {
     let log2fc = log2(fc)
 
     # t-test per gene
-    let test = ttest(ctrl_vals, trt_vals)
+    let test = ttest(ctrl_vals, trt_vals, {variance: "welch"})
 
     gene_stats = gene_stats + [{
         gene: gene,

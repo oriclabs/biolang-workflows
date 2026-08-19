@@ -15,13 +15,11 @@
 
 ## The Problem
 
-Dr. Elena Vasquez is the lead biostatistician for a pharmaceutical company. A new immunotherapy drug has shown promising results in cell lines and mouse models. Now the clinical team is designing the Phase II trial and they want her sign-off on the sample size.
+You are planning a treatment study. A small experiment is cheaper and faster, but its estimate may be too imprecise to distinguish a worthwhile effect from ordinary variation. A larger experiment costs more and may expose more participants or animals than necessary.
 
-The clinical lead proposes 20 patients per arm — treatment and placebo. "It's faster, cheaper, and we can get to Phase III sooner," he argues. Elena runs the numbers and shakes her head. With 20 patients per arm and the expected effect size, the trial has only a 23% chance of detecting the drug's benefit even if it truly works. That means a 77% chance of concluding the drug is ineffective when it actually saves lives.
+There is no universally correct number such as 20 or 200. Sample-size planning depends on the smallest effect that matters, expected variation, allocation, repeated or clustered measurements, attrition, and the planned analysis.
 
-She recommends 200 patients per arm. The clinical lead winces at the cost — $12 million more and 18 extra months of enrollment. But Elena is firm: "Would you rather spend $12 million now and know the answer, or spend $50 million on a Phase III that was doomed from the start because Phase II was too small to see the signal?"
-
-This tension — between the cost of collecting more data and the cost of drawing wrong conclusions from too little — is the central drama of experimental design. Today you will understand why sample size is not a bureaucratic detail but the most consequential decision in any study.
+Before asking “How large should n be?”, ask two earlier questions: **Who or what is the experimental unit? How will those units be selected?** More observations improve precision only when they provide relevant information; they do not repair biased sampling or pseudoreplication.
 
 ## What Are Populations and Samples?
 
@@ -107,17 +105,20 @@ The quality of the bridge depends entirely on two factors:
 1. **How the sample was selected** (bias)
 2. **How large the sample is** (precision)
 
-> **Key insight:** A large biased sample is worse than a small unbiased one. The 1936 Literary Digest poll surveyed 2.4 million people and predicted Alf Landon would win the presidential election in a landslide. George Gallup surveyed 50,000 and correctly predicted Roosevelt. The Literary Digest sample was drawn from telephone directories and automobile registrations — overrepresenting wealthy voters. Size could not compensate for bias.
+> **Key insight:** A large sample can estimate the wrong target very precisely when selection is biased. In the 1936 US election polling example, a very large but unrepresentative poll failed while a smaller, better-selected sample performed better. Sample size controls only part of uncertainty; selection controls who the answer represents.
 
 ## The Sampling Distribution
 
-This is one of the most important concepts in all of statistics, and it is the one that most students find counterintuitive at first.
+One sample gives one mean. A different sample usually gives a slightly different mean.
 
-Imagine you draw a sample of 30 patients, measure their blood pressure, and compute the mean. You get 125 mmHg. Now imagine you draw a different sample of 30 patients and compute the mean. You might get 121 mmHg. A third sample: 128 mmHg.
+Imagine repeatedly drawing 30 patients from the same target population and calculating the mean blood pressure each time. The collection of those means is the **sampling distribution of the mean**.
 
-If you repeated this process thousands of times — each time drawing 30 patients and computing the mean — you would get thousands of sample means. These sample means form a distribution called the **sampling distribution of the mean**.
+This is different from the distribution of individual blood pressures:
 
-The sampling distribution is NOT the distribution of individual data points. It is the distribution of a statistic (like the mean) computed from repeated samples.
+- **Data distribution:** one value for each patient.
+- **Sampling distribution:** one statistic, such as a mean, from each repeated sample.
+
+The first describes people. The second describes how an estimate would vary across repeated samples under the sampling process.
 
 ### Seeing It in Action
 
@@ -125,7 +126,7 @@ The sampling distribution is NOT the distribution of individual data points. It 
 set_seed(42)
 # Simulate the sampling distribution
 
-# The "population": blood pressure values (slightly right-skewed)
+# The simulated population: approximately normal blood pressure values
 let population = rnorm(100000, 125, 18)
 
 # Draw 1000 samples of size 30, compute mean of each
@@ -151,20 +152,17 @@ histogram(sample_means_30, {bins: 40, title: "Sampling Distribution (n=30)"})
 histogram(sample_means_200, {bins: 40, title: "Sampling Distribution (n=200)"})
 ```
 
-Two crucial observations:
-1. Both sampling distributions are centered at the true population mean (~125). Samples are unbiased estimators.
-2. The n=200 distribution is much **narrower** than n=30. Larger samples give more precise estimates.
+Two observations:
+1. Under this random-sampling simulation, the sample mean is centred near the population mean (~125).
+2. The n=200 sampling distribution is much **narrower** than the n=30 distribution. Larger random samples estimate the mean more precisely.
 
 ## The Central Limit Theorem
 
 The Central Limit Theorem (CLT) is a useful result for understanding sample means. In simplified terms, it says:
 
-**Regardless of the shape of the population distribution, the sampling distribution of the mean approaches a normal distribution as sample size increases.**
+For independent observations with finite variance, the sampling distribution of the mean often becomes more nearly normal as sample size grows.
 
-This is useful, but conditional. For independent observations with finite
-variance, sample means often become approximately normal as sample size grows.
-How large is "large enough" depends on skewness, tails, dependence, and the
-accuracy needed; no fixed sample size works for every population.
+How large is “large enough” depends on skewness, heavy tails, dependence, and the accuracy needed. The theorem concerns repeated **sample means**, not a promise that the individual observations become normally distributed.
 
 <div style="text-align: center; margin: 2em 0;">
 <svg width="680" height="420" viewBox="0 0 680 420" xmlns="http://www.w3.org/2000/svg" style="background: #fafbfc; border: 1px solid #e5e7eb; border-radius: 8px;">
@@ -266,27 +264,17 @@ print(f"n=100 skewness: {skewness(means_n100):.2}")
 normal_qq_plot(means_n100, {title: "Q-Q Plot: Sample Means n=100"})
 ```
 
-Watch the skewness drop toward zero as n increases. By n=100, the sampling distribution is indistinguishable from a normal curve, even though the underlying data is wildly skewed.
+In this simulation, skewness drops toward zero as n increases. At n=100 the sample-mean distribution looks close to normal, even though the individual simulated values remain skewed. A different population may converge more slowly.
 
 > **Key insight:** Under suitable conditions, the CLT explains why sampling distributions of sums and means can become approximately normal even when individual observations are not. The approximation depends on sample size, tail behaviour, and dependence. It does not make the raw data normal, and it does not justify a normal reference for every statistic or study design.
 
 ### When Does the CLT "Kick In"?
 
-The speed of convergence to normality depends on how non-normal the population is:
-
-| Population Shape | n Needed for CLT |
-|---|---|
-| Already normal | Any n (even n=1) |
-| Slightly skewed | n &ge; 15 |
-| Moderately skewed | n &ge; 30 |
-| Heavily skewed | n &ge; 50-100 |
-| Extremely skewed or heavy-tailed | n &ge; 100+ |
-
-The "n &ge; 30" rule of thumb is a rough guideline, not a universal truth.
+There is no reliable “n &ge; 30” switch. A moderately sized sample can be adequate for one population and poor for another. Heavy tails, rare extreme values, dependence, or strong clustering can require much more information. Plot the data, inspect influence, respect the design, and use simulation or resampling when the approximation is uncertain.
 
 ## Standard Error: The Precision of Your Estimate
 
-The standard deviation of the sampling distribution has a special name: the **standard error** (SE).
+The standard deviation of an estimator's sampling distribution is its **standard error** (SE). For the mean of independent, identically distributed observations, it is estimated by:
 
 **SE = SD / &radic;n**
 
@@ -298,7 +286,7 @@ This formula encodes the fundamental relationship between sample size and precis
 <div style="text-align: center; margin: 2em 0;">
 <svg width="680" height="280" viewBox="0 0 680 280" xmlns="http://www.w3.org/2000/svg" style="background: #fafbfc; border: 1px solid #e5e7eb; border-radius: 8px;">
   <text x="340" y="26" text-anchor="middle" font-size="15" font-weight="bold" fill="#1e293b">Standard Error Shrinks with Sample Size</text>
-  <text x="340" y="44" text-anchor="middle" font-size="11" fill="#6b7280">Error bars show 95% CI for the mean (mean +/- 1.96*SE), SD = 18 mmHg</text>
+  <text x="340" y="44" text-anchor="middle" font-size="11" fill="#6b7280">Normal/large-sample illustration: mean +/- 1.96*SE, SD = 18 mmHg</text>
   <!-- Axes -->
   <line x1="80" y1="220" x2="640" y2="220" stroke="#9ca3af" stroke-width="1.5"/>
   <line x1="80" y1="220" x2="80" y2="60" stroke="#9ca3af" stroke-width="1.5"/>
@@ -443,11 +431,11 @@ Studies with significant results are more likely to be published than studies wi
 | Measurement | Systematic instrument/observer error | GC bias, batch effects |
 | Publication | Only positive results published | "Significant" GWAS hits that don't replicate |
 
-> **Key insight:** Bias cannot be fixed by increasing sample size. A biased study with 10,000 subjects gives you a very precise wrong answer. Always evaluate bias before interpreting results.
+> **Key insight:** Increasing sample size usually reduces sampling error but does not remove systematic bias. A very large biased study can produce a narrow interval around the wrong target population or measurement.
 
 ## Why n Matters: The Power Preview
 
-Statistical **power** is the probability of detecting a real effect when it exists. It is 1 minus the Type II error rate (1 - &beta;). Convention targets 80% power, meaning a 20% chance of missing a real effect.
+Statistical **power** is the probability that a specified testing procedure rejects its null model under a specified alternative effect. It is 1 minus the Type II error rate (1 - &beta;) for that design and alternative. An 80% target is common in some settings, but it is not a universal guarantee or requirement.
 
 Power depends on four factors:
 1. **Effect size** — How large is the true difference? Bigger effects are easier to detect.
@@ -714,7 +702,7 @@ set_seed(42)
 - Under suitable independence and finite-variance conditions, the **Central Limit Theorem** explains why the sampling distribution of a mean often becomes approximately normal as sample size grows. Heavy tails, dependence, and small samples can make the approximation poor.
 - For an independent sample mean, **standard error** is estimated by SD/&radic;n. Quadrupling n then halves this estimated SE; clustered or dependent data need a design-aware calculation.
 - **Bias** (selection, survivorship, ascertainment, measurement, publication) is a systematic distortion that cannot be fixed by increasing n. Identify and prevent bias at the design stage.
-- **Statistical power** is the probability of detecting a real effect. Underpowered studies waste resources and miss real effects. The four determinants of power are effect size, sample size, variability, and significance threshold.
+- **Statistical power** is the rejection probability for a specified test, design, and alternative effect. It depends on effect size, sample size, variability, threshold, and design structure.
 - The **bootstrap** can estimate uncertainty for many statistics when the resampling scheme represents how the data were collected. It still relies on representative data and a correct resampling unit.
 
 ## What's Next

@@ -268,8 +268,8 @@ A p-value measures compatibility with a null model; it does not tell you whether
 let tumor  = [3.8, 4.5, 4.1, 3.2, 4.8, 3.9, 4.3, 5.1, 3.6, 4.0, 4.7, 3.5]
 let normal = [6.2, 7.1, 6.5, 7.4, 6.8, 7.0, 6.3, 7.2, 6.9, 6.6, 7.3, 6.1]
 
-# Default: Welch's t-test (unequal variances)
-let result = ttest(tumor, normal)
+# Explicit Welch's t-test (unequal variances)
+let result = ttest(tumor, normal, {variance: "welch"})
 print("=== Welch's t-test: BRCA1 Tumor vs Normal ===")
 print(f"t-statistic: {result.statistic:.4}")
 print(f"p-value: {result.p_value:.2e}")
@@ -303,7 +303,7 @@ print(f"Normal summary: {s_normal}")
 let var_ratio = variance(tumor) / variance(normal)
 print(f"Variance ratio (tumor/normal): {var_ratio:.3}")
 if var_ratio > 2.0 or var_ratio < 0.5 {
-  print("Variances appear unequal -> use Welch's t-test (the default)")
+  print("Variances appear unequal -> use the explicit Welch option")
 } else {
   print("Variances appear similar -> pooled t-test is also valid")
 }
@@ -333,7 +333,7 @@ print(f"Mean reduction: {mean(diffs):.1} mm^3")
 print(f"Individual reductions: {diffs}")
 
 # Compare: what if we wrongly used an independent t-test?
-let wrong_result = ttest(before, after)
+let wrong_result = ttest(before, after, {variance: "welch"})
 print(f"\nWrong (independent) t-test p-value: {wrong_result.p_value:.6}")
 print(f"Correct (paired) t-test p-value: {result.p_value:.6}")
 print("Paired test is more powerful because it removes inter-patient variability")
@@ -386,7 +386,7 @@ print("Gene       | t-stat | p-value    | Cohen's d | Interpretation")
 print("-----------|--------|------------|-----------|---------------")
 
 for i in 0..len(genes) {
-  let result = ttest(tumor_expr[i], normal_expr[i])
+  let result = ttest(tumor_expr[i], normal_expr[i], {variance: "welch"})
   let d = (mean(tumor_expr[i]) - mean(normal_expr[i])) / sqrt((variance(tumor_expr[i]) + variance(normal_expr[i])) / 2.0)
   let interp = if abs(d) > 0.8 then "Large" else if abs(d) > 0.5 then "Medium" else "Small"
   print(f"{genes[i]:<10} | {result.statistic:>6.2} | {result.p_value:>10.2e} | {d:>9.3} | {interp}")
@@ -402,7 +402,7 @@ import numpy as np
 tumor  = [3.8, 4.5, 4.1, 3.2, 4.8, 3.9, 4.3, 5.1, 3.6, 4.0, 4.7, 3.5]
 normal = [6.2, 7.1, 6.5, 7.4, 6.8, 7.0, 6.3, 7.2, 6.9, 6.6, 7.3, 6.1]
 
-# Welch's t-test (default)
+# Welch's t-test (explicit BioLang option)
 t, p = stats.ttest_ind(tumor, normal, equal_var=False)
 print(f"Welch's t = {t:.4f}, p = {p:.2e}")
 

@@ -241,7 +241,7 @@ let de_results = []
 for gene in row_names(log_cpm) {
   let tumor_vals = log_cpm[gene] |> select(tumor_idx)
   let normal_vals = log_cpm[gene] |> select(normal_idx)
-  let tt = ttest(tumor_vals, normal_vals)
+  let tt = ttest(tumor_vals, normal_vals, {variance: "welch"})
   let fc = mean(tumor_vals) - mean(normal_vals)
   de_results = de_results + [{
     gene: gene,
@@ -359,7 +359,7 @@ fn run_de(expr, group_a_idx, group_b_idx) {
   for gene in row_names(expr) {
     let a_vals = expr[gene] |> select(group_a_idx)
     let b_vals = expr[gene] |> select(group_b_idx)
-    let tt = ttest(a_vals, b_vals)
+    let tt = ttest(a_vals, b_vals, {variance: "welch"})
     results = results + [{
       gene: gene,
       log2fc: mean(a_vals) - mean(b_vals),
@@ -496,7 +496,7 @@ Let us take a messy analysis from earlier chapters and restructure it into a rep
 let d = read_csv("data/expression.csv")
 let a = d |> filter(|r| r.condition == "treatment") |> map(|r| r.sample1)
 let b = d |> filter(|r| r.condition == "control") |> map(|r| r.sample1)
-print(ttest(a, b))
+print(ttest(a, b, {variance: "welch"}))
 # p = 0.003 — hardcoded from a previous run
 histogram(a, {bins: 30})
 # TODO: fix this later
@@ -545,7 +545,7 @@ normal_qq_plot(a, {title: "Q-Q Plot — Group A"})
 normal_qq_plot(b, {title: "Q-Q Plot — Group B"})
 
 # --- Primary Analysis ---
-let tt = ttest(a, b)
+let tt = ttest(a, b, {variance: "welch"})
 print("\nWelch t-test:")
 print("  t = " + str(round(tt.statistic, 3)))
 print("  p = " + str(round(tt.p_value, 4)))

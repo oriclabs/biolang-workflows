@@ -110,7 +110,7 @@ Terms are listed alphabetically. Cross-references appear in *italics*.
 
 **k-means clustering.** A *clustering* algorithm that partitions n observations into k clusters by minimizing within-cluster variance. Requires specifying k in advance. Sensitive to initialization; run multiple times.
 
-**Kruskal-Wallis test.** The non-parametric alternative to one-way *ANOVA*. Tests whether multiple groups have the same distribution. Based on ranks rather than raw values.
+**Kruskal-Wallis test.** A rank-based comparison of multiple independent groups. It tests whether their rank distributions differ; it is not automatically a test of medians or a drop-in replacement for every ANOVA design.
 
 **Linear regression.** A model that predicts a continuous outcome as a linear function of one or more predictors: y = beta_0 + beta_1 * x_1 + ... + epsilon. Assumes normally distributed residuals and constant variance.
 

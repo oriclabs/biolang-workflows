@@ -304,9 +304,10 @@ print(f"F-statistic: {result.statistic:.4}")
 print(f"p-value: {result.p_value:.2e}")
 print(f"df between: {result.df_between}, df within: {result.df_within}")
 
-# Effect size: eta-squared = SS_between / SS_total (inline from anova output)
-let eta2 = result.ss_between / (result.ss_between + result.ss_within)
+# Effect sizes are returned directly.
+let eta2 = result.eta_squared
 print(f"Eta-squared: {eta2:.4} ({eta2*100:.1}% of variance explained)")
+print(f"Omega-squared: {result.omega_squared:.4}")
 
 # Check assumptions: compare variances per group
 print(f"\nVariances: placebo={variance(placebo):.1}, 25mg={variance(dose_25):.1}, 50mg={variance(dose_50):.1}, 100mg={variance(dose_100):.1}")
@@ -320,25 +321,12 @@ let dose_25  = [420, 445, 398, 461, 432, 410, 452, 438]
 let dose_50  = [310, 335, 288, 352, 321, 298, 345, 328]
 let dose_100 = [180, 210, 165, 225, 195, 172, 218, 198]
 
-# Tukey HSD: pairwise ttest() + p_adjust()
 let groups = [placebo, dose_25, dose_50, dose_100]
-let labels = ["Placebo", "25mg", "50mg", "100mg"]
-let pairwise_p = []
-let pair_labels = []
-for i in 0..len(groups) {
-  for j in (i+1)..len(groups) {
-    let r = ttest(groups[i], groups[j])
-    pairwise_p = append(pairwise_p, r.p_value)
-    pair_labels = append(pair_labels, "{labels[i]} vs {labels[j]}")
-  }
-}
-let adj_p = p_adjust(pairwise_p, "bonferroni")
+let posthoc = tukey_hsd(groups)
 
-print("=== Pairwise t-tests (Bonferroni-adjusted) ===")
-print("Comparison          | Diff     | p-adj")
-print("--------------------|----------|--------")
-for k in 0..len(pair_labels) {
-  print(f"{pair_labels[k]:<20}| {adj_p[k]:.4}")
+print("=== Tukey-Kramer HSD ===")
+for comparison in posthoc.comparisons {
+  print(f"{comparison.contrast}: diff={comparison.mean_difference:.2}, simultaneous CI=[{comparison.confidence_lower:.2}, {comparison.confidence_upper:.2}], p={comparison.p_adjusted:.4}")
 }
 ```
 
@@ -355,7 +343,7 @@ let groups = {
 boxplot(groups, {title: "Tumor Volume by Treatment Dose", y_label: "Tumor Volume (mm^3)", x_label: "Dose Group", show_points: true})
 ```
 
-### Kruskal-Wallis: When ANOVA Assumptions Fail
+### Kruskal-Wallis: A Rank-Based Comparison Across Groups
 
 ```bio
 # Cytokine levels across three disease stages — heavily skewed
@@ -437,27 +425,19 @@ let result = anova([t_reg, t_eff, b_cell, nk])
 print("\n=== One-Way ANOVA ===")
 print(f"F = {result.statistic:.2}, p = {result.p_value:.2e}")
 
-# Step 3: Effect size (eta-squared from anova output)
-let eta2 = result.ss_between / (result.ss_between + result.ss_within)
+# Step 3: Effect sizes returned by ANOVA
+let eta2 = result.eta_squared
 print(f"Eta-squared = {eta2:.3} (cell type explains {eta2*100:.1}% of variance)")
+print(f"Omega-squared = {result.omega_squared:.3}")
 
-# Step 4: Post-hoc — pairwise ttest() + p_adjust()
+# Step 4: genuine Tukey-Kramer post-hoc comparisons
 let cell_groups = [t_reg, t_eff, b_cell, nk]
-let cell_labels = ["T-reg", "T-eff", "B cell", "NK"]
-let pw_pvals = []
-let pw_labels = []
-for i in 0..len(cell_groups) {
-  for j in (i+1)..len(cell_groups) {
-    pw_pvals = append(pw_pvals, ttest(cell_groups[i], cell_groups[j]).p_value)
-    pw_labels = append(pw_labels, "{cell_labels[i]} vs {cell_labels[j]}")
-  }
-}
-let pw_adj = p_adjust(pw_pvals, "bonferroni")
+let posthoc = tukey_hsd(cell_groups)
 
-print("\n=== Pairwise t-tests (Bonferroni) ===")
-for k in 0..len(pw_labels) {
-  let sig = if pw_adj[k] < 0.001 then "***" else if pw_adj[k] < 0.01 then "**" else if pw_adj[k] < 0.05 then "*" else "ns"
-  print(f"{pw_labels[k]:<20} p={pw_adj[k]:.4} {sig}")
+print("\n=== Tukey-Kramer HSD ===")
+for comparison in posthoc.comparisons {
+  let sig = if comparison.p_adjusted < 0.001 then "***" else if comparison.p_adjusted < 0.01 then "**" else if comparison.p_adjusted < 0.05 then "*" else "ns"
+  print(f"{comparison.contrast:<20} p={comparison.p_adjusted:.4} {sig}")
 }
 
 # Step 5: Visualize

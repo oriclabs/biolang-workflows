@@ -67,6 +67,29 @@ The familiar 68-95-99.7 percentages for one, two, and three SD apply only to an
 approximately normal distribution. The bands are still distances on other
 distributions, but not guaranteed coverage percentages.
 
+To see that distinction directly, use the normal teaching diagram. With data,
+it prints or draws the observed coverage next to the theoretical reference:
+
+```bio
+# Notebook/web SVG.
+stat.normal_diagram(protein)
+
+# Terminal ASCII, including a highlighted two-sided tail beyond |z| = 1.96.
+println(stat.normal_diagram(protein, {
+    format: "ascii",
+    z: 1.96,
+    tail: "two"
+}))
+```
+
+An exploration report already contains an SVG and ASCII guide. Render either
+without extracting nested fields manually:
+
+```bio
+stat.visualize(report)
+println(stat.visualize(report, {format: "ascii"}))
+```
+
 ## Add the design separately
 
 Numbers do not reveal whether rows are patients, technical replicates, cells
