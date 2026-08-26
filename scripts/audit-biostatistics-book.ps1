@@ -12,16 +12,22 @@ if (-not (Test-Path -LiteralPath $BioLangExe -PathType Leaf)) {
     throw "BioLang executable not found: $BioLangExe (run cargo build -p bl-cli)"
 }
 
-$chapters = @(Get-ChildItem -LiteralPath $bookRoot -Filter "day-*.md" | Sort-Object Name)
-if ($chapters.Count -ne 30) {
-    throw "Expected 30 day chapters, found $($chapters.Count)"
+$dayChapters = @(Get-ChildItem -LiteralPath $bookRoot -Filter "day-*.md" | Sort-Object Name)
+$simpleChapters = @(Get-ChildItem -LiteralPath $bookRoot -Filter "simple-*.md" | Sort-Object Name)
+if ($dayChapters.Count -ne 30) {
+    throw "Expected 30 day chapters, found $($dayChapters.Count)"
 }
+if ($simpleChapters.Count -ne 10) {
+    throw "Expected 10 Start Simple chapters, found $($simpleChapters.Count)"
+}
+$chapters = @($simpleChapters + $dayChapters)
 
 $scratch = Join-Path ([System.IO.Path]::GetTempPath()) ("biolang-book-audit-" + [Guid]::NewGuid().ToString("N"))
 New-Item -ItemType Directory -Path $scratch | Out-Null
 $failures = @()
 $warnings = @()
 $blocksChecked = 0
+$simpleBlocksRun = 0
 
 # Claims on this list previously taught invalid pass/fail rules. Keep the list
 # narrow: words such as "always" are legitimate in mathematical identities and
@@ -56,6 +62,17 @@ try {
             if ($LASTEXITCODE -ne 0) {
                 $failures += "$($chapter.Name) BioLang block $($index + 1): $($output -join ' ')"
             }
+            if ($chapter.Name -like "simple-*.md") {
+                $simpleBlocksRun++
+                $savedPreference = $ErrorActionPreference
+                $ErrorActionPreference = "Continue"
+                $output = & $BioLangExe run --no-gpu $tempFile 2>&1
+                $runExitCode = $LASTEXITCODE
+                $ErrorActionPreference = $savedPreference
+                if ($runExitCode -ne 0) {
+                    $failures += "$($chapter.Name) BioLang block $($index + 1) failed at runtime: $($output -join ' ')"
+                }
+            }
             if ($code -match '(?im)^\s*#\s*(output|result)\s*:.*\d') {
                 $warnings += "$($chapter.Name) block $($index + 1) contains a pasted numeric output/result; verify it is measured."
             }
@@ -69,8 +86,10 @@ finally {
 }
 
 Write-Host "Biostatistics book audit"
-Write-Host "  chapters:       $($chapters.Count)"
+Write-Host "  short chapters: $($simpleChapters.Count)"
+Write-Host "  full chapters:  $($dayChapters.Count)"
 Write-Host "  BioLang blocks: $blocksChecked"
+Write-Host "  short blocks run: $simpleBlocksRun"
 Write-Host "  warnings:       $($warnings.Count)"
 foreach ($warning in $warnings) { Write-Warning $warning }
 

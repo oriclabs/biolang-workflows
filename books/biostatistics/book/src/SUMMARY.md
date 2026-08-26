@@ -4,6 +4,25 @@
 
 ---
 
+# Choose Your Learning Path
+
+- [Start Simple or Follow the Full Course?](start-simple.md)
+
+# Start Simple: 10 Short Lessons
+
+- [1. Centre: Mean, Median, and Mode](simple-01-centre.md)
+- [2. Spread, Shape, Outliers, and Logs](simple-02-spread-shape.md)
+- [3. Samples, Standard Error, and Confidence Intervals](simple-03-samples-uncertainty.md)
+- [4. Probability, Tests, and p-Values](simple-04-probability-tests.md)
+- [5. Counts, Proportions, and Disease Rates](simple-05-frequency-rates.md)
+- [6. One 2x2 Table, Many Useful Measures](simple-06-two-by-two.md)
+- [7. Sampling and Study Designs](simple-07-study-designs.md)
+- [8. Bias, Confounding, and Fair Comparisons](simple-08-bias-confounding.md)
+- [9. Screening and Diagnostic Tests](simple-09-screening.md)
+- [10. Read the Evidence](simple-10-evidence.md)
+
+---
+
 # Week 1: Statistical Foundations
 
 - [Day 1: Why Statistics? The Story Your Data Is Trying to Tell](day-01.md)

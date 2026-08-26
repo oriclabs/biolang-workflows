@@ -1,8 +1,8 @@
 # Biostatistics learning-book audit
 
-This audit covers all 30 `day-*.md` chapters. It is intended to keep the book
-practical without turning descriptive clues into automatic scientific
-decisions.
+This audit covers the ten `simple-*.md` beginner lessons and all 30
+`day-*.md` chapters. It is intended to keep the book practical without turning
+descriptive clues into automatic scientific decisions.
 
 ## Reproducible checks
 
@@ -12,11 +12,12 @@ Run from the repository root after building `bl`:
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/audit-biostatistics-book.ps1
 ```
 
-The audit requires exactly 30 day chapters and parses every fenced `bio` or
-`biolang` block independently with `bl check --no-gpu`. At the time of this
-audit it checks 318 code blocks. Parsing verifies BioLang syntax; it does not
-claim that examples requiring external files have been executed or that an
-illustrative dataset is real.
+The audit requires exactly ten short lessons and 30 day chapters. It parses
+every fenced `bio` or `biolang` block independently with `bl check --no-gpu`.
+It also executes every short-path block independently on the deterministic CPU
+backend. Parsing verifies BioLang syntax; it does not claim that full-course
+examples requiring external files have been executed or that an illustrative
+dataset is real.
 
 The external numerical oracle is separate:
 

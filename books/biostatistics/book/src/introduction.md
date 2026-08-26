@@ -10,6 +10,19 @@ simulations or illustrative scenarios. The goal is not to memorize formulas;
 it is to understand what a method asks, what its picture shows, and what its
 result does—and does not—support.
 
+## Choose the Amount of Detail You Want
+
+You now have two routes through this book. Both teach the same careful way of
+thinking; they differ in pace and depth.
+
+| Route | Best for | Time | What you get |
+|---|---|---:|---|
+| **[Start Simple](start-simple.md)** | A first encounter with statistics, a quick refresher, or someone who wants health examples before technical detail | Ten lessons of about 15-25 minutes | One question, one picture, one small calculation, and one BioLang example per lesson |
+| **Full 30-day course** | Readers who need analysis methods for research, omics, modelling, or publication | 30 substantial chapters | Assumptions, diagnostics, comparisons with R and Python, exercises, and capstone analyses |
+
+> **Unsure?** Begin with Start Simple. It ends with a map into the full course,
+> and nothing is lost by taking the shorter route first.
+
 And you will do it all in BioLang, whose current runtime provides hundreds of
 builtins across statistics, data handling, biological formats, and
 visualization. That lets you express an analysis — from data loading to

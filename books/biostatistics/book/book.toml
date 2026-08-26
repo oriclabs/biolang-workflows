@@ -2,7 +2,7 @@
 title = "Practical Biostatistics in 30 Days"
 authors = ["Bioras"]
 language = "en"
-description = "A calm, practical introduction to statistics for biological data with BioLang"
+description = "A calm, practical introduction to statistics and epidemiology with a short beginner route and a full BioLang course"
 src = "src"
 
 [build]
