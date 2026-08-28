@@ -71,6 +71,12 @@ def main() -> int:
     )
     parser.add_argument("--gpu", choices=("auto", "off", "on"), default="off")
     parser.add_argument("--write-svg", action="store_true")
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=123456,
+        help="seed BioLang's runtime random stream (default: 123456)",
+    )
     args = parser.parse_args()
 
     repo = Path(__file__).resolve().parents[2]
@@ -111,20 +117,50 @@ def main() -> int:
         "BIOLANG_HBC_CTRL_SCT": args.ctrl_sct,
         "BIOLANG_HBC_STIM_SCT": args.stim_sct,
     }
+    resolved_inputs: list[Path] = []
     for name, value in required_inputs.items():
         if value:
             resolved = Path(value).resolve()
             if not resolved.exists():
                 raise SystemExit(f"{name} path does not exist: {resolved}")
             environment[name] = str(resolved)
+            resolved_inputs.append(resolved)
         elif name not in environment:
             raise SystemExit(f"pass --{name.removeprefix('BIOLANG_HBC_').lower().replace('_', '-')} or set {name}")
+        else:
+            resolved = Path(environment[name]).resolve()
+            if not resolved.exists():
+                raise SystemExit(f"{name} path does not exist: {resolved}")
+            environment[name] = str(resolved)
+            resolved_inputs.append(resolved)
     # A .bln file is an executable notebook, whereas `bl notebook file.bl`
     # renders plain source as notebook content and exits successfully without
     # evaluating it.  Select the command from the artifact type so a measured
     # "success" always means that the requested analysis actually ran.
     subcommand = "notebook" if notebook.suffix.casefold() == ".bln" else "run"
     command = [str(executable), subcommand, str(notebook)]
+    record = output.parent / f"{output.name}-run.json"
+    if record.exists():
+        raise SystemExit(f"run record already exists: {record}")
+    if subcommand == "run":
+        # Keep logs and rolling resource checkpoints out of the declared
+        # artifacts. The CLI hashes only stable scientific outputs after the
+        # script succeeds, while this wrapper independently samples peak RSS.
+        command.extend(["--record", str(record), "--seed", str(args.seed)])
+        for path in resolved_inputs:
+            command.extend(["--input", str(path)])
+        expected_outputs = [
+            output / "features.csv",
+            output / "markers.csv",
+            output / "cells.csv",
+            output / "summary.csv",
+            output / "timings.csv",
+            output / "pcs.csv",
+        ]
+        if args.write_svg:
+            expected_outputs.append(output / "umap.svg")
+        for path in expected_outputs:
+            command.extend(["--output", str(path)])
     creation_flags = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
 
     started = time.perf_counter()
@@ -170,6 +206,8 @@ def main() -> int:
         "subcommand": subcommand,
         "gpu": args.gpu,
         "write_svg": args.write_svg,
+        "seed": args.seed,
+        "run_record": str(record) if subcommand == "run" else None,
         "exit_code": process.returncode,
         "wall_seconds": round(time.perf_counter() - started, 3),
         "peak_working_set_bytes": peak_bytes,

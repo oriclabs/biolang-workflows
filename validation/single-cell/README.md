@@ -1,5 +1,11 @@
 # Scanpy and Seurat validation
 
+The latest full real-data execution is recorded in
+[HBC_REVALIDATION_2026-08-27.md](HBC_REVALIDATION_2026-08-27.md). It includes
+recorded CPU/GPU runs, a fresh current-build SCTransform check, exact optional
+provider replay, resource measurements, and regression gates. Native mode is
+scientifically close but does not reproduce Seurat's exact clusters.
+
 These checks generate a deterministic 10x MEX dataset locally. No count matrix
 is committed or downloaded by the package.
 
@@ -149,6 +155,20 @@ optional GPL SCTransform executable, then runs the complete downstream analysis
 in BioLang. `compare_hbc_biology.py` checks broad PBMC identities and the
 control-to-stimulated response; `compare_hbc_results.py` retains the stricter
 numeric cluster, feature, neighbour, UMAP, and marker comparisons.
+
+Always pass the corrected Seurat marker artifact with `--seurat-markers` when
+running `compare_hbc_results.py`. The comparator now refuses an older export
+where R data-frame row names overwrote biological gene labels.
+
+`measure_biolang_hbc.py` uses `bl run --record` for `.bl` workflows. It records
+the seed and backend, hashes all declared inputs and stable scientific outputs,
+and independently samples peak working set. Use a new output name for every
+run; the wrapper refuses to mix or overwrite evidence.
+
+After paired CPU/GPU runs, use `compare_hbc_backends.py` to require scientific
+backend parity and `validate_hbc_release.py` to apply the release regression
+gates. These gates are floors against regression, not a claim that the still-
+unmet 95% native-cluster target has been achieved.
 
 To determine where partition drift enters, use
 `prepare_hbc_seurat_pcs.py`, `hbc_cluster_seurat_pcs.bl`, and

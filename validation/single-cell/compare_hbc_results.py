@@ -17,13 +17,6 @@ from scipy.optimize import linear_sum_assignment
 from sklearn.metrics import adjusted_mutual_info_score, adjusted_rand_score
 from sklearn.neighbors import NearestNeighbors
 
-# Some relocatable Python installations do not expose a cache locator for
-# site-packages source files.  PyNNDescent requests Numba's on-disk cache at
-# import time, so that packaging detail otherwise prevents comparison before a
-# single metric is calculated.  Disabling only the persistent cache preserves
-# the compiled algorithm and its deterministic seed.
-import numba
-
 
 def _without_disk_cache(decorator):
     def wrapped(*args, **kwargs):
@@ -31,14 +24,6 @@ def _without_disk_cache(decorator):
         return decorator(*args, **kwargs)
 
     return wrapped
-
-
-numba.jit = _without_disk_cache(numba.jit)
-numba.njit = _without_disk_cache(numba.njit)
-numba.vectorize = _without_disk_cache(numba.vectorize)
-numba.guvectorize = _without_disk_cache(numba.guvectorize)
-
-from pynndescent import NNDescent
 
 
 def parse_args() -> argparse.Namespace:
@@ -56,6 +41,25 @@ def parse_args() -> argparse.Namespace:
 
 def cell_key(frame: pd.DataFrame) -> pd.Series:
     return frame["sample"].astype(str) + "::" + frame["barcode"].astype(str)
+
+
+def validate_seurat_marker_axis(seurat_dir: Path, marker_path: Path) -> None:
+    """Reject the known R row-name export failure before expensive comparisons."""
+    retained_gene_path = seurat_dir / "retained-genes.csv"
+    if not marker_path.exists() or not retained_gene_path.exists():
+        return
+
+    retained_genes = set(pd.read_csv(retained_gene_path)["gene"].astype(str))
+    marker_genes = set(pd.read_csv(marker_path, usecols=["gene"])["gene"].astype(str))
+    invalid = sorted(marker_genes - retained_genes)
+    if invalid:
+        examples = ", ".join(invalid[:5])
+        raise RuntimeError(
+            "Seurat marker artifact contains feature labels absent from "
+            f"the retained assay ({len(invalid)} invalid; examples: {examples}). "
+            "This usually means R data-frame row names overwrote the biological "
+            "gene column; pass --seurat-markers with the corrected oracle."
+        )
 
 
 def remove_self(neighbors: np.ndarray, wanted: int) -> np.ndarray:
@@ -80,6 +84,20 @@ def mean_neighbor_jaccard(left: np.ndarray, right: np.ndarray) -> float:
 
 
 def approximate_pc_neighbors(values: np.ndarray, seed: int, k: int) -> np.ndarray:
+    # Import lazily so malformed input artifacts fail before PyNNDescent's
+    # relatively expensive Numba initialization. Some relocatable Python
+    # installations also lack a cache locator for site-packages sources.
+    import numba
+
+    if not getattr(numba, "_biolang_disk_cache_disabled", False):
+        numba.jit = _without_disk_cache(numba.jit)
+        numba.njit = _without_disk_cache(numba.njit)
+        numba.vectorize = _without_disk_cache(numba.vectorize)
+        numba.guvectorize = _without_disk_cache(numba.guvectorize)
+        numba._biolang_disk_cache_disabled = True
+
+    from pynndescent import NNDescent
+
     index = NNDescent(
         values,
         n_neighbors=max(30, k + 1),
@@ -99,6 +117,9 @@ def exact_2d_neighbors(values: np.ndarray, k: int) -> np.ndarray:
 
 def main() -> None:
     args = parse_args()
+    seurat_marker_path = args.seurat_markers or args.seurat_dir / "markers.csv"
+    validate_seurat_marker_axis(args.seurat_dir, seurat_marker_path)
+
     seurat_cells = pd.read_csv(args.seurat_dir / "cells.csv.gz")
     biolang_cells = pd.read_csv(args.biolang_dir / "cells.csv")
     seurat_cells["key"] = cell_key(seurat_cells)
@@ -192,7 +213,6 @@ def main() -> None:
         "umap_neighbor_method": "exact-kd-tree",
     }
 
-    seurat_marker_path = args.seurat_markers or args.seurat_dir / "markers.csv"
     biolang_marker_path = args.biolang_dir / "markers.csv"
     if seurat_marker_path.exists() and biolang_marker_path.exists():
         seurat_markers = pd.read_csv(seurat_marker_path)
@@ -251,6 +271,7 @@ def main() -> None:
         results.update(
             {
                 "seurat_positive_marker_rows": int(len(seurat_markers)),
+                "seurat_marker_source": str(seurat_marker_path.resolve()),
                 "biolang_positive_marker_rows": int(len(biolang_markers)),
                 "mapped_marker_pair_intersection": marker_intersection,
                 "mapped_marker_pair_recall_min_set": marker_intersection

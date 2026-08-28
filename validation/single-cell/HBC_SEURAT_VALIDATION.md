@@ -1,5 +1,9 @@
 # HBC Seurat validation boundary
 
+> **Current release check:** [HBC_REVALIDATION_2026-08-27.md](HBC_REVALIDATION_2026-08-27.md)
+> records fresh BioLang CPU/GPU, current SCTransform executable, and strict
+> provider runs. Historical sections below are retained chronologically.
+
 `hbc_seurat_reference.R` is an independent, validation-only execution of the
 public HBC control/stimulated PBMC course workflow. It is not an implementation
 source for BioLang and is not called by BioLang, Cargo, package tests, notebook
