@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "kind": "workflow",
+  "id": "oriclabs/hbc-scrnaseq-validation",
+  "version": "1.0.0",
+  "title": "HBC single-cell RNA-seq validation workflow",
+  "summary": "A reproducible BioLang analysis of 29,629 public HBC PBMC cells with an isolated Seurat 5.5.1 black-box comparison.",
+  "entry": "hbc_course_validation.bln",
+  "runtimes": ["cli", "desktop", "somer"],
+  "source": {
+    "repository": "https://github.com/oriclabs/biolang-workflows",
+    "training": "https://hbctraining.github.io/Intro-to-scRNAseq/"
+  },
+  "licence": "MIT",
+  "validation": {
+    "evidence": "../../validation/single-cell/HBC_REVALIDATION_2026-08-27.md",
+    "date": "2026-08-27",
+    "dataset": "29,629 filtered control and stimulated PBMC cells",
+    "method": "Fresh BioLang CPU/GPU and GPL SCTransform process-boundary runs compared with a hash-pinned Seurat 5.5.1 oracle.",
+    "limitations": "Native clustering is not exact Seurat parity: ARI 0.69627 and broad PBMC identity agreement 94.92%."
+  }
+}
