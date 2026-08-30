@@ -33,6 +33,12 @@ The language reference remains sourced and maintained in the main BioLang
 repository. Generated HTML and PDFs remain ignored and never become
 implementation source.
 
+Installable teaching sequences belong in the separate
+[`biolang-lessons`](https://github.com/oriclabs/biolang-lessons) repository.
+This repository retains end-to-end analyses, benchmark definitions, and
+external validation workflows; a runnable analysis is not duplicated here as
+a lesson package.
+
 ## Use with a released BioLang installation
 
 Install BioLang 1.4.0 or newer and ensure `bl` is on `PATH`. Workflows importing
