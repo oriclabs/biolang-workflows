@@ -14,7 +14,7 @@ let results = tool_search("samtools")
 println("\n=== BioContainers: samtools ===")
 for t in results {
     println("  ", t.name, "-", t.description)
-    println("    Pulls:", t.pulls, "| Versions:", t.versions, "| License:", t.license)
+    println("    Pulls:", t.pulls, "| Versions:", t.versions)
 }
 
 # Search with options
@@ -41,7 +41,7 @@ println("\n=== samtools Details ===")
 println("Name:", info.name)
 println("Description:", info.description)
 println("Organization:", info.organization)
-println("License:", info.license)
+println("Registry URL:", info.tool_url)
 println("Total pulls:", info.pulls)
 println("Available versions:", len(info.versions))
 

@@ -11,15 +11,22 @@
 # Eight patients with known CYP2C9 and VKORC1 genotypes (real star alleles)
 println("=== Patient Cohort ===")
 
-let patients = table(
+let patients_columns = {
   id:        ["PT-001","PT-002","PT-003","PT-004","PT-005","PT-006","PT-007","PT-008"],
   age:       [62, 45, 71, 58, 39, 67, 53, 74],
   weight_kg: [78, 92, 64, 85, 70, 60, 105, 68],
   cyp2c9:    ["*1/*1","*1/*2","*1/*3","*2/*2","*2/*3","*3/*3","*1/*1","*1/*2"],
   vkorc1:    ["GG",   "GA",   "GA",   "GG",   "AA",   "GA",   "AA",   "AA"  ]
-)
+}
+let patients = range(0, len(patients_columns.id)) |> map(|i| {
+  id: patients_columns.id[i],
+  age: patients_columns.age[i],
+  weight_kg: patients_columns.weight_kg[i],
+  cyp2c9: patients_columns.cyp2c9[i],
+  vkorc1: patients_columns.vkorc1[i]
+}) |> table()
 
-println("Patient cohort loaded: " + len(patients) + " subjects")
+println("Patient cohort loaded: " + str(len(patients)) + " subjects")
 
 # ── 2. Pharmacogene lookups ────────────────────────────────────────────────────
 # CYP2C9 -- cytochrome P450, metabolises S-warfarin (the active enantiomer)
@@ -31,8 +38,8 @@ let vkorc1_gene  = ncbi_gene("VKORC1")
 let cyp2c9_prot  = uniprot_entry("P11712")         # Human CYP2C9 UniProt
 let cyp2c9_ens   = ensembl_gene("ENSG00000138109")  # CYP2C9 Ensembl ID
 
-if is_record(cyp2c9_gene) then println("CYP2C9 locus: chr" + cyp2c9_gene.chromosome + " (" + cyp2c9_gene.description + ")") else println("CYP2C9 IDs: " + str(cyp2c9_gene))
-if is_record(vkorc1_gene) then println("VKORC1 locus: chr" + vkorc1_gene.chromosome + " (" + vkorc1_gene.description + ")") else println("VKORC1 IDs: " + str(vkorc1_gene))
+if is_record(cyp2c9_gene) then println("CYP2C9 locus: chr" + str(cyp2c9_gene.chromosome) + " (" + str(cyp2c9_gene.description) + ")") else println("CYP2C9 IDs: " + str(cyp2c9_gene))
+if is_record(vkorc1_gene) then println("VKORC1 locus: chr" + str(vkorc1_gene.chromosome) + " (" + str(vkorc1_gene.description) + ")") else println("VKORC1 IDs: " + str(vkorc1_gene))
 
 # ── 3. Genotype to metabolizer phenotype ───────────────────────────────────────
 # CYP2C9 activity scores: *1 = 1.0, *2 = 0.5, *3 = 0.0
@@ -84,9 +91,13 @@ let warfarin_kegg  = kegg_get("D00564")
 let cyp_inhibitors = kegg_find("drug", "CYP2C9 inhibitor")
 let cyp_pathways   = reactome_pathways("CYP2C9")
 
-println("Warfarin KEGG entry: " + warfarin_kegg.name)
-println("Known CYP2C9 inhibitors found: " + len(cyp_inhibitors))
-println("CYP2C9 Reactome pathways: " + len(cyp_pathways))
+# kegg_get() returns the raw KEGG flat file, so read the NAME field off it.
+let warfarin_name = lines(warfarin_kegg)
+  |> filter(|l| starts_with(l, "NAME"))
+  |> map(|l| trim(substr(l, 4, len(l))))
+println("Warfarin KEGG entry: " + (if len(warfarin_name) > 0 then warfarin_name[0] else "not found"))
+println("Known CYP2C9 inhibitors found: " + str(len(cyp_inhibitors)))
+println("CYP2C9 Reactome pathways: " + str(len(cyp_pathways)))
 
 # ── 6. Known variant effects ──────────────────────────────────────────────────
 # ClinVar annotations link CYP2C9 variants to warfarin response phenotypes.
@@ -96,8 +107,8 @@ println("=== Known Variant Effects ===")
 let clinvar_hits = ncbi_search("clinvar", "CYP2C9 warfarin")
 let cosmic_cyp   = cosmic_gene("CYP2C9")
 
-println("ClinVar records for CYP2C9+warfarin: " + len(clinvar_hits))
-println("COSMIC somatic entries (CYP2C9): " + len(cosmic_cyp.variants))
+println("ClinVar records for CYP2C9+warfarin: " + str(len(clinvar_hits)))
+println("COSMIC somatic entries (CYP2C9): " + str(len(cosmic_cyp.variants)))
 
 # ── 7. Protein structure context ──────────────────────────────────────────────
 # CYP2C9 is 490 aa; *2 (R144C) is near the surface, *3 (I359L) is in the
@@ -107,19 +118,25 @@ println("=== Protein Structure Context ===")
 let features = uniprot_features("P11712")
 let crystal  = pdb_entry("1OG5")   # CYP2C9 complexed with S-warfarin (1.9A)
 
-println("UniProt features: " + len(features) + " annotations")
-println("PDB 1OG5 resolution: " + crystal.resolution + " A")
+println("UniProt features: " + str(len(features)) + " annotations")
+println("PDB 1OG5 resolution: " + str(crystal.resolution) + " A")
 
 # ── 8. Population allele frequencies ──────────────────────────────────────────
 # Real-world approximate frequencies from gnomAD / PharmGKB
 println("=== Population Allele Frequencies ===")
 
-let pop_freq = table(
+let pop_freq_columns = {
   population: ["European","African","East Asian","South Asian","Latino"],
   cyp2c9_s2:  [0.12, 0.03, 0.00, 0.04, 0.07],
   cyp2c9_s3:  [0.07, 0.01, 0.04, 0.10, 0.05],
   vkorc1_a:   [0.39, 0.11, 0.91, 0.52, 0.44]
-)
+}
+let pop_freq = range(0, len(pop_freq_columns.population)) |> map(|i| {
+  population: pop_freq_columns.population[i],
+  cyp2c9_s2: pop_freq_columns.cyp2c9_s2[i],
+  cyp2c9_s3: pop_freq_columns.cyp2c9_s3[i],
+  vkorc1_a: pop_freq_columns.vkorc1_a[i]
+}) |> table()
 
 # Populations with high VKORC1-A + reduced CYP2C9 need lowest starting doses
 let pop_freq = pop_freq |> mutate("risk_index", |row| round(row.vkorc1_a * (row.cyp2c9_s2 + row.cyp2c9_s3) * 100, 1))
@@ -131,9 +148,12 @@ pop_freq |> arrange("-risk_index") |> println()
 println("=== Visualizations ===")
 
 # Predicted dose distribution by metabolizer status
+# Plots and reports land in output/, which is gitignored.
+mkdir("output")
+
 violin({ data: patients, x: "metabolizer", y: "predicted_dose_mg",
          title: "Warfarin predicted dose by CYP2C9 metabolizer status" })
-  |> save_svg("warfarin_dose_violin.svg")
+  |> save_svg("output/warfarin_dose_violin.svg")
 
 # Genotype-dose heatmap (CYP2C9 x VKORC1)
 let dose_matrix = matrix([[5.0,3.8,2.5],[3.8,2.8,1.9],[2.5,1.9,1.3],
@@ -141,7 +161,7 @@ let dose_matrix = matrix([[5.0,3.8,2.5],[3.8,2.8,1.9],[2.5,1.9,1.3],
 
 heatmap({ data: dose_matrix,
           title: "Predicted warfarin dose (mg/day) by genotype combination" })
-  |> save_svg("warfarin_dose_heatmap.svg")
+  |> save_svg("output/warfarin_dose_heatmap.svg")
 
 # Key variant positions on the CYP2C9 protein (490 aa)
 let variant_sites = table([
@@ -152,7 +172,7 @@ let variant_sites = table([
 ])
 
 lollipop({ data: variant_sites, title: "CYP2C9 pharmacovariants", length: 490 })
-  |> save_svg("cyp2c9_lollipop.svg")
+  |> save_svg("output/cyp2c9_lollipop.svg")
 println("Visualizations saved")
 
 # ── 10. Clinical decision support summary ─────────────────────────────────────
@@ -160,8 +180,8 @@ println("=== Clinical Decision Support Summary ===")
 
 let high_risk = patients |> filter(|row| row.predicted_dose_mg <= 1.9)
 let normal    = patients |> filter(|row| row.predicted_dose_mg >= 4.0)
-println("High-risk patients (dose <= 1.9 mg/day): " + len(high_risk))
-println("Normal-dose patients (dose >= 4.0 mg/day): " + len(normal))
+println("High-risk patients (dose <= 1.9 mg/day): " + str(len(high_risk)))
+println("Normal-dose patients (dose >= 4.0 mg/day): " + str(len(normal)))
 
 let report = join([
   "# Warfarin Pharmacogenomic Dosing Report\n\n",
@@ -179,7 +199,7 @@ let report = join([
   "## Figures\n\n",
   "See warfarin_dose_violin.svg, warfarin_dose_heatmap.svg, cyp2c9_lollipop.svg\n"
 ], "")
-write_text("warfarin_pgx_report.md", report)
+write_text("output/warfarin_pgx_report.md", report)
 
 println("Report written to warfarin_pgx_report.md")
 println("\n=== Analysis complete ===")

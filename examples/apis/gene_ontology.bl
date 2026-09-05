@@ -13,9 +13,10 @@ println("Obsolete:", term.is_obsolete)
 
 # GO aspects: molecular_function, biological_process, cellular_component
 
-# Get GO annotations for a gene
-# go_annotations(gene, limit?) -> list of annotation records
-let annotations = go_annotations("TP53", 10)
+# Get GO annotations for a gene product
+# go_annotations(accession, limit?) -> list of annotation records
+# QuickGO keys annotations by UniProt accession, so a bare gene symbol is rejected.
+let annotations = go_annotations("P04637", 10)   # human TP53
 println("\n=== TP53 GO Annotations ===")
 for a in annotations {
     println("  [", a.aspect, "]", a.go_id, "-", a.go_name)
@@ -51,12 +52,14 @@ println("\n=== Descendants ===")
 println("Total:", len(descendants))
 
 # Compare GO annotations across genes
-let genes = ["TP53", "BRCA1", "MDM2"]
+let genes = [{symbol: "TP53", accession: "P04637"},
+             {symbol: "BRCA1", accession: "P38398"},
+             {symbol: "MDM2", accession: "Q00987"}]
 println("\n=== GO Annotation Comparison ===")
 for g in genes {
-    let anns = go_annotations(g, 50)
+    let anns = go_annotations(g.accession, 50)
     let bp = filter(anns, |a| a.aspect == "biological_process")
     let mf = filter(anns, |a| a.aspect == "molecular_function")
     let cc = filter(anns, |a| a.aspect == "cellular_component")
-    println(g, ": BP=", len(bp), "MF=", len(mf), "CC=", len(cc))
+    println(g.symbol, ": BP=", len(bp), "MF=", len(mf), "CC=", len(cc))
 }

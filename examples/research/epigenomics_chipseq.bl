@@ -69,7 +69,7 @@ let promoter_peaks = promoters |> map(|p| {
 }) |> flatten()
 println("\nPeaks at promoters: " + str(promoter_peaks |> count()))
 promoter_peaks |> each(|hit| {
-    println("  " + hit.chrom + ":" + str(hit.start) + "-" + str(hit.end))
+    println("  " + str(hit.chrom) + ":" + str(hit.start) + "-" + str(hit.end))
 })
 
 # Nearest gene for every peak — query_nearest returns a table, get first row
@@ -93,18 +93,13 @@ println("=== Super-Enhancer Identification ===")
 let merged = merge_intervals(peak_ivs)
 println("\nMerged regions (12.5kb stitch): " + str(merged |> count()))
 
-# Sum signal per merged region
-let ranked = peaks
-    |> sort(|a, b| b.signal - a.signal)
-    |> mutate("rank", |row| 0)
+# Rank peaks by signal, strongest first, and number them 1..N.
+let by_signal = peaks |> arrange("-signal")
+let ranked = range(0, len(by_signal))
+    |> map(|i| merge(by_signal[i], {rank: i + 1}))
+    |> table()
 
-# Assign ranks 1..N
-let ranked = table(peaks
-    |> sort(|a, b| b.signal - a.signal)
-    |> map(|p| p.signal))
-
-let signals_sorted = peaks |> sort(|a, b| b.signal - a.signal) |> map(|p| p.signal)
-let ranks = signals_sorted |> map(|s| 0) # placeholder for index
+let signals_sorted = by_signal |> map(|p| p.signal)
 
 # Inflection threshold: signal at top-quartile boundary
 let threshold = signals_sorted |> median()
@@ -117,7 +112,7 @@ println("Super-enhancers: " + str(super_enhancers |> count()))
 println("Typical enhancers: " + str(typical_enhancers |> count()))
 
 super_enhancers |> each(|se| {
-    println("  SE: " + se.gene_near + " — signal " + str(se.signal))
+    println("  SE: " + str(se.gene_near) + " — signal " + str(se.signal))
 })
 
 # ── 5. Differential Binding: Leukemia vs Normal ─────────────────────
@@ -171,12 +166,12 @@ println("=== Database Queries ===")
 
 println("\n--- Database Annotations ---")
 let myc_info = ncbi_gene("MYC")
-if is_record(myc_info) then println("MYC (NCBI): " + myc_info.description) else println("MYC IDs: " + str(myc_info))
+if is_record(myc_info) then println("MYC (NCBI): " + str(myc_info.description)) else println("MYC IDs: " + str(myc_info))
 
 let myc_ens = ensembl_gene("ENSG00000136997")
-println("MYC (Ensembl): biotype=" + myc_ens.biotype)
+println("MYC (Ensembl): biotype=" + str(myc_ens.biotype))
 
-let myc_go = go_annotations("MYC")
+let myc_go = go_annotations("P01106")   # human MYC; QuickGO needs the accession
 println("MYC GO terms: " + str(len(myc_go)))
 
 let myc_network = string_network(["MYC"], 9606)
@@ -189,13 +184,19 @@ println("KEGG AML pathways: " + str(len(aml_pathway)))
 println("=== Visualizations ===")
 
 # Genome track of peaks at MYC locus
-let myc_peaks = peaks |> filter(|p| p.gene_near == "MYC")
+# genome_track() reads flat chrom/start/end columns, so unpack the interval.
+let myc_peaks = peaks
+  |> filter(|p| p.gene_near == "MYC")
+  |> map(|p| {chrom: p.iv.chrom, start: p.iv.start, end: p.iv.end,
+              name: p.id, signal: p.signal})
+  |> table()
 let track = genome_track({data: myc_peaks, title: "H3K27ac at MYC locus (chr8)"})
 save_svg(track, "output/myc_h3k27ac_track.svg")
 
 # Hockey-stick rank plot for super-enhancer calling
-let rank_data = peaks |> sort(|a, b| a.signal - b.signal) |> select("id", "signal")
-let rank_svg = plot({x: rank_data |> map(|r| r.id), y: rank_data |> map(|r| r.signal),
+# A hockey-stick plot puts rank on x; peak ids are strings and cannot be an axis.
+let rank_data = peaks |> arrange("signal") |> select("id", "signal")
+let rank_svg = plot({x: range(1, len(rank_data) + 1), y: rank_data |> map(|r| r.signal),
     title: "H3K27ac Signal Rank Plot (Super-Enhancer Cutoff)"})
 save_svg(rank_svg, "output/se_rank_plot.svg")
 
@@ -230,6 +231,9 @@ let report = "# Super-Enhancer Analysis — H3K27ac ChIP-seq in AML\n\n" +
     "BET inhibitors (JQ1, OTX015) disrupt super-enhancer-driven MYC expression. " +
     "CDK7 inhibition (THZ1) selectively collapses SE-associated transcription. " +
     "These loci represent candidate biomarkers for epigenetic therapy response.\n"
+
+# Plots and reports land in output/, which is gitignored.
+mkdir("output")
 
 write_text("output/se_report.md", report)
 println("Report saved to output/se_report.md")

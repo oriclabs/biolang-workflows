@@ -32,6 +32,8 @@ println("   Biotype:", ensembl.biotype)
 
 # 4. UniProt (EU) — protein info
 let proteins = uniprot_search(gene_symbol + " human reviewed:true", 1)
+# QuickGO (step 9) keys annotations by accession, not by gene symbol.
+let accession = if len(proteins) > 0 then proteins[0].accession else ""
 if len(proteins) > 0 {
     let p = proteins[0]
     println("\n4. UniProt (EU)")
@@ -81,7 +83,7 @@ if len(structures) > 0 {
 }
 
 # 9. GO (EU/EBI) — ontology
-let go_annot = go_annotations(gene_symbol, 10)
+let go_annot = if accession != "" then go_annotations(accession, 10) else []
 println("\n9. Gene Ontology (EU)")
 println("   Top annotations:")
 for a in head(go_annot, 5) {

@@ -28,7 +28,7 @@ let scored = functional |> mutate("cadd_score", |v| {
 })
 println("Scored:", scored |> count())
 
-let ranked = scored |> sort(|a, b| b.cadd_score - a.cadd_score)
+let ranked = scored |> arrange("-cadd_score")
 println("Ranked:")
 ranked |> each(|v| println("  " + v.gene + " " + v.consequence + " CADD=" + str(v.cadd_score)))
 

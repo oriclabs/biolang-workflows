@@ -52,6 +52,9 @@ println("After QC (MAF>0.01, INFO>0.8): " + str(len(qc_pass)) + " SNPs pass")
 # ── 3. Manhattan and QQ Plots ──
 println("=== Manhattan and QQ Plots ===")
 
+# Plots and reports land in output/, which is gitignored.
+mkdir("output")
+
 manhattan(qc_pass, {threshold: 5e-8, format: "svg"})
   |> save_svg("output/t2d_manhattan.svg")
 
@@ -141,25 +144,25 @@ println("Potentially novel loci: " + str(len(novel)))
 println("=== Database Queries for Top Hit ===")
 
 let top_hit = annotated[0]
-println("\nTop hit: " + top_hit.rsid + " (" + top_hit.nearest_gene + ")")
+println("\nTop hit: " + str(top_hit.rsid) + " (" + str(top_hit.nearest_gene) + ")")
 
 let gene_info = ncbi_gene("TCF7L2")
 if is_record(gene_info) then
-    println("NCBI Gene ID: " + gene_info.id + " | Summary: " + gene_info.summary)
+    println("NCBI Gene ID: " + str(gene_info.id) + " | Summary: " + str(gene_info.summary))
 else
     println("NCBI Gene IDs: " + str(gene_info))
 
 let ensembl = ensembl_gene("ENSG00000148737")
-println("Ensembl biotype: " + ensembl.biotype + " | Description: " + ensembl.description)
+println("Ensembl biotype: " + str(ensembl.biotype) + " | Description: " + str(ensembl.description))
 
 let t2d_kegg = kegg_find("disease", "type 2 diabetes")
-println("KEGG disease entry: " + t2d_kegg[0].id + " - " + t2d_kegg[0].description)
+println("KEGG disease entry: " + str(t2d_kegg[0].id) + " - " + str(t2d_kegg[0].description))
 
 let ppi_network = string_network(["TCF7L2"], 9606)
 let interactors = ppi_network
   |> filter(|edge| edge.score > 0.7)
   |> map(|edge| edge.protein_b)
-println("STRING interactors (score>0.7): " + join(interactors, ", "))
+println("STRING interactors (score>0.7): " + str(join(interactors, ", ")))
 
 # ── 9. Forest Plot of Effect Sizes ──
 println("=== Forest Plot of Effect Sizes ===")
@@ -181,13 +184,13 @@ println("Forest plot saved to output/t2d_forest.svg")
 println("=== Functional Enrichment ===")
 
 let gwas_genes = annotated |> map(|row| row.nearest_gene) |> unique()
-println("GWAS genes identified: " + join(gwas_genes, ", "))
+println("GWAS genes identified: " + str(join(gwas_genes, ", ")))
 
 # Query GO annotations for top hit gene
-let tcf7l2_go = go_annotations("TCF7L2")
+let tcf7l2_go = go_annotations("Q9NQB0")   # human TCF7L2; QuickGO needs the accession
 println("TCF7L2 GO terms: " + str(len(tcf7l2_go)) + " annotations")
 let bp_terms = tcf7l2_go |> filter(|a| a.aspect == "BP") |> map(|a| a.term) |> take(5)
-println("Key processes: " + join(bp_terms, "; "))
+println("Key processes: " + str(join(bp_terms, "; ")))
 
 # ── 11. Summary Report ──
 println("=== Summary Report ===")

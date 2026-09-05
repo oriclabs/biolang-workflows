@@ -66,7 +66,7 @@ let tier1_drivers = ["TP53", "KRAS", "EGFR", "BRAF", "PIK3CA", "BRCA1", "BRCA2",
 let drivers = classified |> filter(|v| tier1_drivers |> contains(v.gene))
 println("Tier-1 driver mutations:", count(drivers))
 drivers |> each(|v| {
-    println("  " + v.gene + " " + v.aa + " (AF=" + str(v.af) + ", " + v.var_type + ")")
+    println("  " + str(v.gene) + " " + str(v.aa) + " (AF=" + str(v.af) + ", " + str(v.var_type) + ")")
 })
 
 # ── 5. COSMIC Mutation Frequency ───────────────────────────────────
@@ -78,7 +78,7 @@ let tp53_cosmic = cosmic_gene("TP53")
 println("TP53 COSMIC entries:", len(tp53_cosmic))
 let top_tp53 = sort(tp53_cosmic, |a, b| b.count - a.count) |> head(3)
 for m in top_tp53 {
-    println("  " + m.aa + " (" + m.primary_site + ") —", m.count, "tumors")
+    println("  " + str(m.aa) + " (" + str(m.primary_site) + ") —", m.count, "tumors")
 }
 
 # ── 6. ClinVar Pathogenicity Check ─────────────────────────────────
@@ -104,7 +104,7 @@ let p53_features = uniprot_features("P04637")
 let domains = filter(p53_features, |f| f.type == "Domain")
 println("Found", len(domains), "domains")
 for d in domains {
-    println("  Domain: " + d.description + " [" + d.location + "]")
+    println("  Domain: " + str(d.description) + " [" + str(d.location) + "]")
 }
 
 # ── 8. Drug Target Lookup via KEGG ─────────────────────────────────
@@ -115,7 +115,7 @@ println("\n=== Querying KEGG drug targets ===")
 let egfr_drugs = kegg_find("drug", "EGFR inhibitor")
 println("EGFR-targeted drugs in KEGG:", len(egfr_drugs))
 for d in head(egfr_drugs, 5) {
-    println("  " + d.id + ": " + d.description)
+    println("  " + str(d.id) + ": " + str(d.description))
 }
 
 let braf_drugs = kegg_find("drug", "BRAF inhibitor")
@@ -205,6 +205,9 @@ let report = "# Molecular Tumor Board Report — Patient PT-001\n\n" +
     "2. Consider combination EGFR + BRAF inhibition given co-occurrence.\n" +
     "3. Refer for BRCA1/2 germline testing (C61G variant, low AF may indicate germline).\n" +
     "4. Enroll in basket trial if standard therapy progression.\n"
+
+# Plots and reports land in output/, which is gitignored.
+mkdir("output")
 
 write_text("output/tumor_board_report.md", report)
 println("Report saved to output/tumor_board_report.md")

@@ -32,6 +32,11 @@ jobs:
           workspaces: _core -> target
       - name: Build BioLang
         run: cargo build --manifest-path _core/Cargo.toml -p bl-cli
+      - name: Run every example
+        env:
+          BIOLANG_CLI: ${{ github.workspace }}/_core/target/debug/bl
+        run: node scripts/check-examples-run.mjs
+
       - name: Check MSMB examples
         env:
           BIOLANG_CLI: ${{ github.workspace }}/_core/target/debug/bl

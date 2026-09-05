@@ -6,13 +6,20 @@
 # ── 1. Sample Metadata ──────────────────────────────────────────────
 println("=== Sample Metadata ===")
 
-let metadata = table(
+let metadata_columns = {
   sample_id: ["IBD01", "IBD02", "IBD03", "IBD04", "HC01", "HC02", "HC03", "HC04"],
   condition:  ["IBD",  "IBD",  "IBD",  "IBD",  "healthy", "healthy", "healthy", "healthy"],
   age:        [34,     52,     28,     45,     31,        48,        33,        41],
   sex:        ["F",    "M",    "F",    "M",    "M",       "F",       "M",       "F"],
   bmi:        [22.1,   27.4,   19.8,   25.6,   24.3,      23.0,      26.1,      22.8]
-)
+}
+let metadata = range(0, len(metadata_columns.sample_id)) |> map(|i| {
+  sample_id: metadata_columns.sample_id[i],
+  condition: metadata_columns.condition[i],
+  age: metadata_columns.age[i],
+  sex: metadata_columns.sex[i],
+  bmi: metadata_columns.bmi[i]
+}) |> table()
 
 # ── 2. ASV Abundance Table (raw counts) ─────────────────────────────
 println("=== ASV Abundance Table ===")
@@ -22,7 +29,7 @@ let taxa = ["Bacteroides", "Faecalibacterium", "Prevotella", "Escherichia",
             "Lactobacillus", "Roseburia", "Enterococcus", "Fusobacterium"]
 
 #                    IBD01  IBD02  IBD03  IBD04   HC01   HC02   HC03   HC04
-let counts = matrix(
+let counts = matrix([
   [1842,  1523,  2104,  1677,  3210,  2987,  3455,  3102],  # Bacteroides
   [ 312,   198,   245,   287,  2845,  3120,  2678,  2901],  # Faecalibacterium
   [ 178,   203,   145,   167,  1456,  1234,  1567,  1389],  # Prevotella
@@ -35,21 +42,20 @@ let counts = matrix(
   [  89,    67,   102,    78,  1567,  1423,  1689,  1534],  # Roseburia
   [ 890,  1023,   756,   912,    98,    67,   112,    89],  # Enterococcus
   [ 678,   812,   589,   723,    34,    21,    45,    28]   # Fusobacterium
-)
+])
 
 let n_samples = 8
 let n_taxa = len(taxa)
-println("Loaded " + n_samples + " samples with " + n_taxa + " taxa")
+println("Loaded " + str(n_samples) + " samples with " + str(n_taxa) + " taxa")
 
 # ── 3. Relative Abundance Normalization ──────────────────────────────
 println("=== Relative Abundance Normalization ===")
 
-let col_totals = range(0, n_samples) |> map(|j|
-  range(0, n_taxa) |> map(|i| counts[i][j]) |> reduce(0, |a, b| a + b)
-)
+# Per-sample totals: counts has taxa as rows and samples as columns.
+let col_totals = col_sums(counts)
 
 let rel_abundance = range(0, n_taxa) |> map(|i|
-  range(0, n_samples) |> map(|j| counts[i][j] / col_totals[j])
+  range(0, n_samples) |> map(|j| row(counts, i)[j] / col_totals[j])
 )
 
 println("Relative abundance matrix computed — columns sum to 1.0")
@@ -74,16 +80,23 @@ let simpson = range(0, n_samples) |> map(|j|
 
 # Observed species: count of taxa with abundance > 0
 let observed = range(0, n_samples) |> map(|j|
-  range(0, n_taxa) |> map(|i| counts[i][j]) |> filter(|c| c > 0) |> len()
+  range(0, n_taxa) |> map(|i| row(counts, i)[j]) |> filter(|c| c > 0) |> len()
 )
 
-let diversity = table(
+let diversity_columns = {
   sample_id: metadata.sample_id,
   condition: metadata.condition,
   shannon:   shannon,
   simpson:   simpson,
   observed:  observed
-)
+}
+let diversity = range(0, len(diversity_columns.sample_id)) |> map(|i| {
+  sample_id: diversity_columns.sample_id[i],
+  condition: diversity_columns.condition[i],
+  shannon: diversity_columns.shannon[i],
+  simpson: diversity_columns.simpson[i],
+  observed: diversity_columns.observed[i]
+}) |> table()
 
 println("Alpha diversity:")
 println(diversity)
@@ -91,17 +104,17 @@ println(diversity)
 # ── 5. Alpha Diversity — Group Comparison ────────────────────────────
 println("=== Alpha Diversity Group Comparison ===")
 
-let shannon_ibd     = diversity |> filter(|r| r.condition == "IBD")     |> select("shannon")
-let shannon_healthy = diversity |> filter(|r| r.condition == "healthy") |> select("shannon")
+let shannon_ibd     = diversity |> filter(|r| r.condition == "IBD")     |> map(|r| r.shannon)
+let shannon_healthy = diversity |> filter(|r| r.condition == "healthy") |> map(|r| r.shannon)
 
 let shannon_test = ttest(shannon_ibd, shannon_healthy)
-println("Shannon IBD vs Healthy — t=" + shannon_test.t_statistic + " p=" + shannon_test.p_value)
+println("Shannon IBD vs Healthy — t=" + str(shannon_test.t_statistic) + " p=" + str(shannon_test.p_value))
 
-let simpson_ibd     = diversity |> filter(|r| r.condition == "IBD")     |> select("simpson")
-let simpson_healthy = diversity |> filter(|r| r.condition == "healthy") |> select("simpson")
+let simpson_ibd     = diversity |> filter(|r| r.condition == "IBD")     |> map(|r| r.simpson)
+let simpson_healthy = diversity |> filter(|r| r.condition == "healthy") |> map(|r| r.simpson)
 
 let simpson_test = ttest(simpson_ibd, simpson_healthy)
-println("Simpson IBD vs Healthy — t=" + simpson_test.t_statistic + " p=" + simpson_test.p_value)
+println("Simpson IBD vs Healthy — t=" + str(simpson_test.t_statistic) + " p=" + str(simpson_test.p_value))
 
 # ── 6. Beta Diversity — Bray-Curtis Dissimilarity ────────────────────
 println("=== Beta Diversity ===")
@@ -110,7 +123,7 @@ println("=== Beta Diversity ===")
 let bray_curtis = range(0, n_samples) |> map(|j|
   range(0, n_samples) |> map(|k|
     let shared = range(0, n_taxa)
-      |> map(|i| if counts[i][j] < counts[i][k] then counts[i][j] else counts[i][k])
+      |> map(|i| if row(counts, i)[j] < row(counts, i)[k] then row(counts, i)[j] else row(counts, i)[k])
       |> reduce(0, |a, b| a + b)
     1.0 - (2.0 * shared) / (col_totals[j] + col_totals[k])
   )
@@ -154,8 +167,9 @@ println("=== Taxonomy & Pathway Lookups ===")
 let faecal_info = ncbi_search("taxonomy", "Faecalibacterium prausnitzii")
 println(format("F. prausnitzii - IDs: {} (count: {})", faecal_info, len(faecal_info)))
 
-let bacteroides_kegg = kegg_find("organism", "Bacteroides")
-println(format("Bacteroides KEGG organisms: {} entries", len(bacteroides_kegg)))
+# KEGG's find endpoint indexes organisms under "genome"; "organism" is rejected.
+let bacteroides_kegg = kegg_find("genome", "Bacteroides")
+println(format("Bacteroides KEGG genomes: {} entries", len(bacteroides_kegg)))
 
 # Functional prediction: map top depleted genera to butyrate pathway
 let butyrate_producers = ["Faecalibacterium", "Roseburia", "Ruminococcus"]
@@ -168,26 +182,34 @@ println(format(
 # ── 9. Visualizations ───────────────────────────────────────────────
 println("=== Visualizations ===")
 
+# Plots and reports land in output/, which is gitignored.
+mkdir("output")
+
 violin({
   data:   diversity,
   x:      "condition",
   y:      "shannon",
   title:  "Shannon Diversity — IBD vs Healthy Controls",
   colors: ["#e74c3c", "#2ecc71"]
-}) |> save_svg("shannon_violin.svg")
+}) |> save_svg("output/shannon_violin.svg")
 
-let bc_table = table(sample_id: metadata.sample_id, matrix: bray_curtis)
+# pca_plot() colours by a named column, so attach `condition` to the
+# Bray-Curtis rows (one row per sample, in metadata order).
+let bc_rows = matrix_to_table(matrix(bray_curtis))
+let bc_table = range(0, len(bc_rows))
+  |> map(|i| merge(bc_rows[i], {condition: metadata.condition[i]}))
+  |> table()
 pca_plot({
   data:     bc_table,
-  group_by: "condition",
+  group_col: "condition",
   title:    "PCoA of Bray-Curtis Dissimilarity",
   colors:   ["#e74c3c", "#2ecc71"]
-}) |> save_svg("beta_pcoa.svg")
+}) |> save_svg("output/beta_pcoa.svg")
 
 let top_diff = diff_table |> sort(|a, b| a.p_value - b.p_value)
 let top_taxa_names = top_diff |> map(|r| r.taxon)
 let heatmap_data = top_taxa_names |> map(|t|
-  let i = taxa |> filter(|x| x == t) |> len()  # index lookup
+  let i = (range(0, len(taxa)) |> filter(|k| taxa[k] == t))[0]
   range(0, n_samples) |> map(|j| rel_abundance[i][j])
 )
 
@@ -197,7 +219,7 @@ heatmap({
   col_labels: metadata.sample_id,
   title:      "Differential Taxa — Relative Abundance Heatmap",
   palette:    "viridis"
-}) |> save_svg("diff_taxa_heatmap.svg")
+}) |> save_svg("output/diff_taxa_heatmap.svg")
 println("Visualizations saved")
 
 # ── 10. Summary Report ───────────────────────────────────────────────
@@ -205,12 +227,12 @@ println("=== Summary Report ===")
 
 let report = "# 16S Metagenomics — IBD Gut Microbiome Study\n\n" +
   "## Cohort\n\nN=8 (4 IBD, 4 healthy), V3-V4 16S rRNA\n\n" +
-  "## Alpha Diversity\n\nShannon: IBD significantly lower (p=" + shannon_test.p_value + ")\n\n" +
+  "## Alpha Diversity\n\nShannon: IBD significantly lower (p=" + str(shannon_test.p_value) + ")\n\n" +
   "## Beta Diversity\n\nPCoA shows clear IBD vs healthy separation\n\n" +
   "## Differential Taxa\n\nIBD enriched: Escherichia, Clostridium, Fusobacterium, Enterococcus\n" +
   "IBD depleted: Faecalibacterium, Roseburia, Ruminococcus, Prevotella\n\n" +
   "## Functional Implications\n\nButyrate-producing genera depleted — consistent with SCFA deficiency in IBD\n"
 
-write_text("metagenomics_report.md", report)
-println("Report saved to metagenomics_report.md")
+write_text("output/metagenomics_report.md", report)
+println("Report saved to output/metagenomics_report.md")
 println("\n=== Analysis complete ===")

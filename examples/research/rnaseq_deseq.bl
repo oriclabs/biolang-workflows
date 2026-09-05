@@ -7,13 +7,20 @@
 # ── 1. Sample Metadata ───────────────────────────────────────────────────────
 println("=== 1. Sample Metadata ===")
 
-let samples = table(
+let samples_columns = {
   sample_id:  ["CTL_1", "CTL_2", "CTL_3", "TRT_1", "TRT_2", "TRT_3"],
   condition:  ["control", "control", "control", "treated", "treated", "treated"],
   replicate:  [1, 2, 3, 1, 2, 3],
   cell_line:  ["HCT116", "HCT116", "HCT116", "HCT116", "HCT116", "HCT116"],
   batch:      ["A", "A", "B", "A", "B", "B"]
-)
+}
+let samples = range(0, len(samples_columns.sample_id)) |> map(|i| {
+  sample_id: samples_columns.sample_id[i],
+  condition: samples_columns.condition[i],
+  replicate: samples_columns.replicate[i],
+  cell_line: samples_columns.cell_line[i],
+  batch: samples_columns.batch[i]
+}) |> table()
 
 println(f"Samples loaded: {len(samples)} total")
 
@@ -25,10 +32,8 @@ println("=== 2. Raw Count Matrix ===")
 let genes = ["TP53", "MYC", "BRCA1", "GAPDH", "ACTB",
              "CDK2", "BCL2", "BAX", "EGFR", "VEGFA", "HIF1A", "MDM2"]
 
-let raw_counts = matrix(
-  rows: genes,
-  cols: samples.sample_id,
-  data: [
+# Row order matches `genes`; column order matches `samples.sample_id`.
+let raw_counts = matrix([
     # TP53   - moderate baseline, upregulated by Nutlin-3a stabilization
     [  820,   780,   850,  3200,  3450,  3100],
     # MYC    - oncogene, repressed upon p53 activation
@@ -53,19 +58,21 @@ let raw_counts = matrix(
     [ 1800,  1750,  1850,  1500,  1400,  1600],
     # MDM2   - p53 negative regulator, strongly induced (negative feedback)
     [  600,   650,   580,  4500,  4200,  4700]
-  ]
-)
+  ])
 
 println(f"Count matrix: {len(genes)} genes x {len(samples)} samples")
 
 # ── 3. CPM Normalization ────────────────────────────────────────────────────
 println("=== 3. CPM Normalization ===")
 
-let lib_sizes = raw_counts
-  |> map(|col| col |> sum())
+# One library size per sample, so sum down the columns.
+let lib_sizes = col_sums(raw_counts)
 
-let cpm_matrix = raw_counts
-  |> map(|col, i| col |> map(|count| count / lib_sizes[i] * 1_000_000))
+# CPM scales each count by its own sample library size; rows stay gene-ordered
+# so `cpm_matrix[gene_index]` still lines up with `genes`.
+let cpm_matrix = range(0, len(genes)) |> map(|g|
+  range(0, len(samples)) |> map(|s| row(raw_counts, g)[s] / lib_sizes[s] * 1_000_000)
+)
 
 println(f"Library sizes (millions): {lib_sizes |> map(|s| s / 1_000_000)}")
 
@@ -76,10 +83,18 @@ println("=== 4. Differential Expression Testing ===")
 let control_idx = [0, 1, 2]
 let treated_idx = [3, 4, 5]
 
-let control_matrix = raw_counts |> map(|col, i| if contains(control_idx, i) { col } else { nil }) |> filter(|col| col != nil)
-let treated_matrix = raw_counts |> map(|col, i| if contains(treated_idx, i) { col } else { nil }) |> filter(|col| col != nil)
+# diff_expr() takes the whole count matrix plus one group index per sample,
+# not a matrix per condition.
+let groups = range(0, len(samples)) |> map(|s| if contains(control_idx, s) then 0 else 1)
 
-let de_results = diff_expr(control_matrix, treated_matrix)
+let de_results = diff_expr(raw_counts, groups)
+
+# A bare Matrix carries no row names, so diff_expr() labels genes gene_0..gene_N.
+# Row order is preserved, so put the real symbols back by position -- the
+# enrichment steps below match on symbol.
+let de_results = range(0, len(de_results))
+  |> map(|i| merge(de_results[i], {gene: genes[i]}))
+  |> table()
 
 println(f"DE test complete: {len(de_results)} genes tested")
 
@@ -97,12 +112,13 @@ println("=== 6. Multiple Testing Correction (BH) ===")
 let pvalues = de_results |> map(|row| row.pvalue)
 let adjusted = p_adjust(pvalues, "bh")
 
-let de_results = de_results
-  |> mutate("padj", |row, i| adjusted[i])
+# mutate() sees one row at a time, so attach the adjusted p-values by position.
+let de_results = range(0, len(de_results))
+  |> map(|i| merge(de_results[i], {padj: adjusted[i]}))
+  |> table()
 
 # Sort by adjusted p-value
-let de_results = de_results
-  |> sort(|a, b| a.padj - b.padj)
+let de_results = de_results |> arrange("padj")
 
 println("Top hits by adjusted p-value:")
 de_results |> filter(|row| row.padj < 0.05)
@@ -136,34 +152,39 @@ let gene_sets = {
 # Over-representation analysis on significant gene list
 let sig_gene_list = sig_genes |> map(|row| row.gene)
 
-let ora_results = ora(sig_gene_list, gene_sets, genes)
+let ora_results = ora(sig_gene_list, gene_sets, len(genes))
 
 println("\nORA Results:")
-ora_results |> map(|row| println(f"  {row.term}\tp={row.pvalue:.4f}\toverlap={row.overlap}"))
+ora_results |> map(|row| println(f"  {row.term}\tp={row.p_value:.4f}\toverlap={row.overlap}"))
 
 # GSEA on full ranked list (ranked by signed -log10 p-value)
+# gsea() reads the ranking from columns named "gene" and "score".
 let ranked_genes = de_results
-  |> mutate("rank_score", |row| -log2(row.pvalue) * (row.log2fc |> sign()))
-  |> sort(|a, b| b.rank_score - a.rank_score)
+  |> mutate("score", |row| -log2(row.pvalue) * (row.log2fc |> sign()))
+  |> arrange("-score")
 
-let gsea_results = gsea(ranked_genes |> select("gene", "rank_score"), gene_sets, 1000)
+let gsea_results = gsea(ranked_genes |> select("gene", "score"), gene_sets, 1000)
 
 println("\nGSEA Results:")
-gsea_results |> map(|row| println(f"  {row.term}\tNES={row.nes:.3f}\tpadj={row.padj:.4f}"))
+gsea_results |> map(|row| println(f"  {row.term}\tNES={row.nes:.3f}\tfdr={row.fdr:.4f}"))
 println("Result:", len(ora_results), "ORA terms,", len(gsea_results), "GSEA terms")
 
 # ── 9. Visualizations ───────────────────────────────────────────────────────
 println("=== 9. Visualizations ===")
 
 # Volcano plot: log2FC vs -log10(padj)
+# volcano() reads column names from `fc`/`p` and cutoffs from
+# `fc_threshold`/`p_threshold`; x/y/label/fc_cutoff/pval_cutoff are ignored.
 let vol = volcano(de_results, {
-  x: "log2fc",
-  y: "padj",
-  label: "gene",
-  title: "Nutlin-3a Treatment: Volcano Plot",
-  fc_cutoff: 1.0,
-  pval_cutoff: 0.05
+  fc: "log2fc",
+  p: "padj",
+  fc_threshold: 1.0,
+  p_threshold: 0.05,
+  title: "Nutlin-3a Treatment: Volcano Plot"
 })
+# Plots and reports land in output/, which is gitignored.
+mkdir("output")
+
 vol |> save_svg("output/volcano_nutlin3a.svg")
 
 # Heatmap of significant genes across all samples
@@ -180,11 +201,17 @@ let hm = clustered_heatmap({
 hm |> save_svg("output/heatmap_sig_genes.svg")
 
 # PCA of all samples using top variable genes
+# PCA puts observations in rows, so transpose CPM to samples x genes and
+# attach the condition column that pca_plot() colours by.
+let sample_rows = matrix_to_table(transpose(matrix(cpm_matrix)))
+let pca_input = range(0, len(sample_rows))
+  |> map(|s| merge(sample_rows[s], {condition: samples.condition[s]}))
+  |> table()
+
 let pca = pca_plot({
-  data: cpm_matrix,
+  data: pca_input,
   title: "PCA: Control vs Nutlin-3a Treated",
-  color_by: samples.condition,
-  labels: samples.sample_id,
+  group_col: "condition",
   n_components: 2
 })
 pca |> save_svg("output/pca_samples.svg")
@@ -208,8 +235,7 @@ let tp53_pathways = reactome_pathways("TP53")
 println(f"\nTP53 Reactome pathways: {len(tp53_pathways)}")
 tp53_pathways
   |> filter(|p| p.species == "Homo sapiens")
-  |> sort(|a, b| a.pvalue - b.pvalue)
-  |> map(|p| println(f"  {p.pathway_id}: {p.name}"))
+  |> map(|p| println(f"  {p.id}: {p.name}"))
 
 let apoptosis_kegg = kegg_find("pathway", "apoptosis")
 println("\nKEGG apoptosis pathways:")

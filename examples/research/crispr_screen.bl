@@ -6,7 +6,7 @@
 # ── 1. sgRNA Library Definition ──
 println("=== sgRNA Library Definition ===")
 
-let sgrna_library = table(
+let sgrna_library_columns = {
   sgRNA:          ["BRAF_g1",  "BRAF_g2",  "NRAS_g1",  "MAP2K1_g1", "MAP2K1_g2",
                    "PTEN_g1",  "PTEN_g2",  "RB1_g1",   "TP53_g1",   "TP53_g2",
                    "CDKN2A_g1","NF1_g1",   "NF1_g2",   "APC_g1",    "STK11_g1",
@@ -15,16 +15,20 @@ let sgrna_library = table(
                    "PTEN",     "PTEN",     "RB1",      "TP53",      "TP53",
                    "CDKN2A",   "NF1",      "NF1",      "APC",       "STK11",
                    "NT_ctrl",  "NT_ctrl",  "NT_ctrl"]
-)
+}
+let sgrna_library = range(0, len(sgrna_library_columns.sgRNA)) |> map(|i| {
+  sgRNA: sgrna_library_columns.sgRNA[i],
+  gene: sgrna_library_columns.gene[i]
+}) |> table()
 
-println("Library size: " + len(sgrna_library) + " guides targeting " +
-        len(unique(sgrna_library.gene)) + " gene groups")
+println("Library size: " + str(len(sgrna_library)) + " guides targeting " +
+        str(len(unique(sgrna_library.gene))) + " gene groups")
 
 # ── 2. Simulated Read Counts ──
 println("=== Simulated Read Counts ===")
 # Plasmid (T0) ~uniform, treated (T1) shows selection, untreated (T1) shows fitness
 
-let counts = table(
+let counts_columns = {
   sgRNA:           sgrna_library.sgRNA,
   gene:            sgrna_library.gene,
   plasmid_count:   [5200, 4800, 4950, 5100, 5300, 4700, 5050, 4900, 5150, 4850,
@@ -33,7 +37,14 @@ let counts = table(
                     150,  62000, 58000, 4200, 3800, 4800, 5200, 4950],
   untreated_count: [4100, 3900, 5200,  4800, 5000, 4500, 4700, 3200, 5300, 5100,
                     3000, 4600, 4900, 4400, 4200, 5100, 4800, 5000]
-)
+}
+let counts = range(0, len(counts_columns.sgRNA)) |> map(|i| {
+  sgRNA: counts_columns.sgRNA[i],
+  gene: counts_columns.gene[i],
+  plasmid_count: counts_columns.plasmid_count[i],
+  treated_count: counts_columns.treated_count[i],
+  untreated_count: counts_columns.untreated_count[i]
+}) |> table()
 
 # ── 3. Quality Control ──
 println("=== Quality Control ===")
@@ -42,16 +53,16 @@ let total_plasmid  = sum(counts.plasmid_count)
 let total_treated  = sum(counts.treated_count)
 let total_untreated = sum(counts.untreated_count)
 
-println("Total reads — Plasmid: " + total_plasmid +
-        "  Treated: " + total_treated +
-        "  Untreated: " + total_untreated)
+println("Total reads — Plasmid: " + str(total_plasmid) +
+        "  Treated: " + str(total_treated) +
+        "  Untreated: " + str(total_untreated))
 
 let zero_treated  = counts |> filter(|r| r.treated_count == 0) |> len()
 let zero_untreated = counts |> filter(|r| r.untreated_count == 0) |> len()
-println("Zero-count guides — Treated: " + zero_treated + "  Untreated: " + zero_untreated)
+println("Zero-count guides — Treated: " + str(zero_treated) + "  Untreated: " + str(zero_untreated))
 
 let cv_plasmid = stdev(counts.plasmid_count) / mean(counts.plasmid_count)
-println("Plasmid library CV: " + cv_plasmid)
+println("Plasmid library CV: " + str(cv_plasmid))
 
 # ── 4. Normalize to Reads Per Million ──
 println("=== Normalize to RPM ===")
@@ -69,7 +80,7 @@ let lfc = norm
   |> mutate("lfc_untreat_vs_plasmid", |r| log2((r.untreated_rpm + 0.5) / (r.plasmid_rpm + 0.5)))
 
 println("Guide-level LFC range (treated/plasmid): " +
-        min(lfc.lfc_treat_vs_plasmid) + " to " + max(lfc.lfc_treat_vs_plasmid))
+        str(min(lfc.lfc_treat_vs_plasmid)) + " to " + str(max(lfc.lfc_treat_vs_plasmid)))
 
 # ── 6. Gene-Level Aggregation ──
 println("=== Gene-Level Aggregation ===")
@@ -82,7 +93,7 @@ let gene_stats = table(gene_names |> map(|g| {
    median_lfc: median(guides.lfc_treat_vs_plasmid),
    fitness_lfc: mean(guides.lfc_untreat_vs_plasmid)}
 }))
-let gene_stats = gene_stats |> sort(|a, b| b.median_lfc - a.median_lfc)
+let gene_stats = gene_stats |> arrange("-median_lfc")
 
 println("Gene-level results (ranked by median LFC):")
 gene_stats |> select("gene", "n_guides", "median_lfc", "fitness_lfc") |> println()
@@ -92,30 +103,35 @@ println("=== Statistical Testing ===")
 
 let ctrl_lfcs = lfc
   |> filter(|r| r.gene == "NT_ctrl")
-  |> select("lfc_treat_vs_plasmid")
+  |> map(|r| r.lfc_treat_vs_plasmid)
 
+# A t-test needs at least two guides per gene, so single-guide genes are
+# reported in the table above but not tested here.
 let gene_pvals = gene_stats
-  |> filter(|r| r.gene != "NT_ctrl")
+  |> filter(|r| r.gene != "NT_ctrl" && r.n_guides >= 2)
   |> mutate("p_value", |r| {
     let guide_lfcs = lfc
       |> filter(|g| g.gene == r.gene)
-      |> select("lfc_treat_vs_plasmid")
-    ttest(guide_lfcs, ctrl_lfcs)
+      |> map(|g| g.lfc_treat_vs_plasmid)
+    ttest(guide_lfcs, ctrl_lfcs).p_value
   })
 
 let adj_pvals = p_adjust(gene_pvals.p_value, "bh")
-let gene_results = gene_pvals |> mutate("p_adj", |r, i| adj_pvals[i])
+# mutate() sees one row at a time, so attach adjusted p-values by position.
+let gene_results = range(0, len(gene_pvals))
+  |> map(|i| merge(gene_pvals[i], {p_adj: adj_pvals[i]}))
+  |> table()
 
 # ── 8. Hit Identification ──
 println("=== Hit Identification ===")
 
 let resistance_hits = gene_results
   |> filter(|r| r.median_lfc > 1.0 && r.p_adj < 0.05)
-  |> sort(|a, b| b.median_lfc - a.median_lfc)
+  |> arrange("-median_lfc")
 
 let sensitizer_hits = gene_results
   |> filter(|r| r.median_lfc < -1.0 && r.p_adj < 0.05)
-  |> sort("median_lfc")
+  |> arrange("median_lfc")
 
 println("Resistance genes (enriched under drug): ")
 resistance_hits |> select("gene", "median_lfc", "p_adj") |> println()
@@ -133,30 +149,40 @@ let braf_paths   = reactome_pathways("BRAF")
 let braf_network = string_network(["BRAF"], 9606)
 let braf_protein = uniprot_entry("P15056")
 
-if is_record(braf_info) then println("BRAF summary: " + braf_info.summary) else println("BRAF IDs: " + str(braf_info))
-if is_record(pten_info) then println("PTEN summary: " + pten_info.summary) else println("PTEN IDs: " + str(pten_info))
+if is_record(braf_info) then println("BRAF summary: " + str(braf_info.summary)) else println("BRAF IDs: " + str(braf_info))
+if is_record(pten_info) then println("PTEN summary: " + str(pten_info.summary)) else println("PTEN IDs: " + str(pten_info))
 println("MAPK pathway hits: " + str(len(mapk_pathway)))
 println("BRAF interaction partners: " + str(len(braf_network)))
 
 # ── 10. Visualizations ──
 println("=== Visualizations ===")
 
-volcano({
-  data:  gene_results |> mutate("neg_log10p", |r| -log10(r.p_adj)),
-  x:     "median_lfc",
-  y:     "neg_log10p",
-  label: "gene",
-  title: "CRISPR Screen: Gene-Level Volcano Plot (Vemurafenib Resistance)"
-}) |> save_svg("volcano_crispr_screen.svg")
+# Plots and reports land in output/, which is gitignored.
+mkdir("output")
 
-let ranked = gene_results |> sort("median_lfc") |> mutate("rank", |r, i| i + 1)
+# volcano() takes the column names as `fc` and `p`, and the cutoffs as
+# `fc_threshold`/`p_threshold`.
+volcano({
+  data:         gene_results,
+  fc:           "median_lfc",
+  p:            "p_adj",
+  fc_threshold: 1.0,
+  p_threshold:  0.05,
+  title:        "CRISPR Screen: Gene-Level Volcano Plot (Vemurafenib Resistance)"
+}) |> save_svg("output/volcano_crispr_screen.svg")
+
+# mutate() sees one row at a time, so number the ranks by position.
+let by_lfc = gene_results |> arrange("median_lfc")
+let ranked = range(0, len(by_lfc))
+  |> map(|i| merge(by_lfc[i], {rank: i + 1}))
+  |> table()
 plot({
   x:     ranked.rank,
   y:     ranked.median_lfc,
   label: ranked.gene,
   kind:  "bar",
   title: "Gene Rank Plot (Waterfall) — Vemurafenib Screen"
-}) |> save_svg("rank_plot_crispr.svg")
+}) |> save_svg("output/rank_plot_crispr.svg")
 
 let guide_matrix = lfc
   |> filter(|r| r.gene != "NT_ctrl")
@@ -166,7 +192,7 @@ heatmap({
   data:   guide_matrix,
   title:  "Guide-Level Log2 Fold Changes",
   colors: "RdBu_r"
-}) |> save_svg("heatmap_guides.svg")
+}) |> save_svg("output/heatmap_guides.svg")
 
 # ── 11. Summary Report ──
 println("=== Summary Report ===")
@@ -174,8 +200,8 @@ println("=== Summary Report ===")
 let report_text = [
   "# CRISPR Screen Report: Vemurafenib Resistance in A375 Melanoma",
   "",
-  "## Library: " + len(sgrna_library) + " sgRNAs, " + len(unique(sgrna_library.gene)) + " gene groups",
-  "## Plasmid CV: " + cv_plasmid,
+  "## Library: " + str(len(sgrna_library)) + " sgRNAs, " + str(len(unique(sgrna_library.gene))) + " gene groups",
+  "## Plasmid CV: " + str(cv_plasmid),
   "",
   "## Resistance Hits (LFC > 1, padj < 0.05):",
   resistance_hits |> select("gene", "median_lfc", "p_adj") |> to_markdown(),
@@ -183,10 +209,10 @@ let report_text = [
   "## Sensitizer Hits (LFC < -1, padj < 0.05):",
   sensitizer_hits |> select("gene", "median_lfc", "p_adj") |> to_markdown(),
   "",
-  "## Top Annotation: BRAF — " + braf_info.description,
-  "## Reactome pathways involving BRAF: " + len(braf_paths)
+  "## Top Annotation: BRAF — " + (if is_record(braf_info) then str(braf_info.description) else str(braf_info)),
+  "## Reactome pathways involving BRAF: " + str(len(braf_paths))
 ] |> join("\n")
 
-write_text("crispr_screen_report.md", report_text)
+write_text("output/crispr_screen_report.md", report_text)
 println("Report saved to crispr_screen_report.md")
 println("\n=== Analysis complete ===")

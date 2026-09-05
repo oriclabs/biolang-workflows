@@ -19,6 +19,10 @@ datasets/cache/
 .venv*/
 renv/library/
 
+# Run artifacts left by examples and workflows
+.biolang/
+*.zarr/
+
 # Language/tool caches
 target/
 __pycache__/

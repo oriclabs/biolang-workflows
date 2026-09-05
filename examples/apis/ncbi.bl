@@ -36,7 +36,7 @@ println("\nFetched FASTA length:", len(fasta))
 # ncbi_summary(ids, database) -> list of records — ids first for pipe-friendliness
 let summaries = ncbi_summary(["672", "7157"], "gene")
 for s in summaries {
-    println("Gene:", s.uid, "-", s.Name)
+    println("Gene:", s.uid, "-", s.name)
 }
 
 # Pipeline: search -> fetch -> analyze

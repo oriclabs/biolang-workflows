@@ -19,7 +19,7 @@ let variants = table({
   lineage: ["WT", "B.1.1.7", "B.1.351", "B.1.617.2", "BA.1", "BA.5", "XBB.1.5"]
 })
 
-println("Loaded " + len(variants.name) |> str() + " variant sequences")
+println("Loaded " + str(len(variants.name)) + " variant sequences")
 
 # ── 2. Pairwise Alignment and Distance Matrix ──
 println("=== Pairwise Alignment and Distance Matrix ===")
@@ -27,9 +27,9 @@ println("=== Pairwise Alignment and Distance Matrix ===")
 let names = variants.name
 let seqs  = variants.seq
 
-let dist = names |> map(|a|
-  names |> map(|b|
-    hamming_distance(seqs[index_of(names, a)], seqs[index_of(names, b)])
+let dist = range(0, len(names)) |> map(|i|
+  range(0, len(names)) |> map(|j|
+    hamming_distance(seqs[i], seqs[j])
   )
 )
 
@@ -37,21 +37,44 @@ let dist_matrix = matrix(dist)
 println("Distance matrix (Hamming mismatches):")
 println(dist_matrix)
 
+# neighbor_joining() returns the tree as a flat list of {name, distance, children}
+# records, while phylo_tree() draws a Newick string, so serialise between them.
+# Leaves come back in input order, which is how `labels` lines up with them.
+fn nj_subtree(nodes, labels, i) {
+  let node = nodes[i]
+  if len(node.children) == 0 then
+    (if i < len(labels) then labels[i] else node.name) + ":" + str(node.distance)
+  else
+    "(" + join(node.children |> map(|c| nj_subtree(nodes, labels, c)), ",") + "):" + str(node.distance)
+}
+
+fn nj_newick(nodes, labels) {
+  let root = len(nodes) - 1
+  "(" + join(nodes[root].children |> map(|c| nj_subtree(nodes, labels, c)), ",") + ");"
+}
+
 # ── 3. Phylogenetic Tree Construction ──
 println("=== Phylogenetic Tree Construction ===")
 
 let nj_tree = neighbor_joining(dist_matrix)
-println("Newick tree: " + nj_tree)
+let nj_newick_str = nj_newick(nj_tree, names)
+println("Newick tree: " + nj_newick_str)
 
-phylo_tree({data: nj_tree, title: "SARS-CoV-2 Spike NJ Tree (Hamming)"})
-  |> save_svg("spike_nj_tree.svg")
+# Plots and reports land in output/, which is gitignored.
+mkdir("output")
+
+phylo_tree({data: nj_newick_str, title: "SARS-CoV-2 Spike NJ Tree (Hamming)"})
+  |> save_svg("output/spike_nj_tree.svg")
 
 # ── 4. Sequence Analysis ──
 println("=== Sequence Analysis ===")
 
 # Identify mutation positions relative to Wuhan reference
+# Protein values are not indexable, so compare residue by residue as strings.
+let wuhan_residues = str(wuhan)
 let mutations = seqs |> map(|s|
-  range(0, len(wuhan)) |> filter(|i| s[i] != wuhan[i])
+  let residues = str(s)
+  range(0, len(wuhan_residues)) |> filter(|i| residues[i] != wuhan_residues[i])
 )
 
 let mutation_table = table({
@@ -63,30 +86,36 @@ println("Mutations relative to Wuhan wildtype:")
 println(mutation_table)
 
 # Amino acid k-mer composition (k=3 tripeptides)
-let kmer_profiles = seqs |> map(|s| kmer_count(s, 3))
+# kmer_count() counts nucleotide k-mers, so slide a window over the residues
+# to get peptide 3-mers instead.
+fn trimers(residues) {
+  range(0, len(residues) - 2) |> map(|i| substr(residues, i, i + 3)) |> unique()
+}
+
+let kmer_profiles = seqs |> map(|s| trimers(str(s)))
 
 let shared_trimers = kmer_profiles[0]
-  |> keys()
-  |> filter(|k| kmer_profiles |> all(|p| p[k] > 0))
-println("Conserved 3-mers across all variants: " + len(shared_trimers) |> str())
+  |> filter(|k| kmer_profiles |> all(|p| contains(p, k)))
+println("Conserved 3-mers across all variants: " + str(len(shared_trimers)))
 
 # ── 5. Sequence Similarity via MinHash Sketching ──
 println("=== Sequence Similarity via MinHash ===")
 
 let sketches = seqs |> map(|s| sketch(s))
 
-let sketch_dists = names |> map(|a|
-  names |> map(|b|
-    sketch_dist(sketches[index_of(names, a)], sketches[index_of(names, b)])
+let sketch_dists = range(0, len(names)) |> map(|i|
+  range(0, len(names)) |> map(|j|
+    sketch_dist(sketches[i], sketches[j])
   )
 )
 
 let sketch_matrix = matrix(sketch_dists)
 let sketch_tree = neighbor_joining(sketch_matrix)
 
-println("Sketch-based Newick: " + sketch_tree)
-phylo_tree({data: sketch_tree, title: "Spike NJ Tree (MinHash Jaccard)"})
-  |> save_svg("spike_sketch_tree.svg")
+let sketch_newick_str = nj_newick(sketch_tree, names)
+println("Sketch-based Newick: " + sketch_newick_str)
+phylo_tree({data: sketch_newick_str, title: "Spike NJ Tree (MinHash Jaccard)"})
+  |> save_svg("output/spike_sketch_tree.svg")
 
 # ── 6. Functional Domain Analysis ──
 println("=== Functional Domain Analysis ===")
@@ -112,31 +141,28 @@ println(domain_table)
 
 # UniProt and PDB lookups for spike protein
 let spike_uniprot = uniprot_entry("P0DTC2")
-println("UniProt: " + spike_uniprot.name + " (" + spike_uniprot.sequence_length |> str() + " aa)")
+println("UniProt: " + str(spike_uniprot.name) + " (" + str(spike_uniprot.sequence_length) + " aa)")
 
 let spike_features = uniprot_features("P0DTC2")
 let binding_sites = spike_features |> filter(|f| f.type == "BINDING")
-println("Annotated binding sites: " + len(binding_sites) |> str())
+println("Annotated binding sites: " + str(len(binding_sites)))
 
 let spike_pdb = pdb_entry("6VXX")
-println("PDB 6VXX: " + spike_pdb.title + " resolution " + spike_pdb.resolution |> str() + " A")
+println("PDB 6VXX: " + str(spike_pdb.title) + " resolution " + str(spike_pdb.resolution) + " A")
 
 # ── 7. Database Lookups ──
 println("=== Database Lookups ===")
 
 let ncbi_hits = ncbi_search("protein", "SARS-CoV-2 spike glycoprotein")
-println("NCBI protein hits: " + len(ncbi_hits) |> str())
+println("NCBI protein hits: " + str(len(ncbi_hits)))
 
 let kegg_hits = kegg_find("genes", "SARS-CoV-2 spike")
-println("KEGG gene entries: " + len(kegg_hits) |> str())
+println("KEGG gene entries: " + str(len(kegg_hits)))
 
-# Variant effect prediction for key spike mutations
-# ensembl_vep returns List of Records with most_severe_consequence + transcript_consequences
-let vep_n501y = ensembl_vep("S:N501Y")
-if len(vep_n501y) > 0 then
-    println("N501Y effect: " + vep_n501y[0].most_severe_consequence)
-else
-    println("N501Y: no VEP results")
+# No VEP call here: Ensembl's /vep/human endpoint resolves variants against
+# human transcripts, and a SARS-CoV-2 spike substitution has none, so
+# ensembl_vep("S:N501Y") is rejected as unparseable HGVS. Spike mutations are
+# characterised positionally in the lollipop plot below instead.
 
 # ── 8. Evolutionary Rate Analysis (Simplified dN/dS) ──
 println("=== Evolutionary Rate Analysis ===")
@@ -166,12 +192,12 @@ println("=== Visualizations ===")
 
 # Heatmap of pairwise distances
 heatmap({data: dist_matrix, title: "Spike Pairwise Hamming Distances"})
-  |> save_svg("spike_distance_heatmap.svg")
+  |> save_svg("output/spike_distance_heatmap.svg")
 
 # Sequence logo of variable positions across aligned sequences
 let aligned = seqs |> map(|s| str(s))
 sequence_logo({data: aligned, title: "Spike RBD Variable Positions"})
-  |> save_svg("spike_sequence_logo.svg")
+  |> save_svg("output/spike_sequence_logo.svg")
 
 # Lollipop plot showing mutations along full spike protein (1273 aa)
 let lollipop_data = table({
@@ -180,7 +206,7 @@ let lollipop_data = table({
   count:    [5, 3, 2, 2, 7, 5, 2, 2]
 })
 lollipop({data: lollipop_data, title: "Key Spike Mutations Across Variants", length: 1273})
-  |> save_svg("spike_mutation_lollipop.svg")
+  |> save_svg("output/spike_mutation_lollipop.svg")
 
 # ── 10. Summary Report ──
 println("=== Summary Report ===")
@@ -194,6 +220,6 @@ let report = join([
   "## Key Finding\nProgressive antigenic drift concentrated in receptor-binding domain\n"
 ], "")
 
-write_text("spike_phylogenomics_report.md", report)
+write_text("output/spike_phylogenomics_report.md", report)
 println("Report saved to spike_phylogenomics_report.md")
 println("\n=== Analysis complete ===")

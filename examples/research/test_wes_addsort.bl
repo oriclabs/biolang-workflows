@@ -3,5 +3,5 @@ let scored = table([
     {gene: "MECP2", consequence: "nonsense", cadd_score: 38.0},
     {gene: "SCN1A", consequence: "missense", cadd_score: 22.0}
 ])
-let ranked = scored |> sort(|a, b| b.cadd_score - a.cadd_score)
+let ranked = scored |> arrange("-cadd_score")
 println("ranked:", ranked)
