@@ -1,5 +1,5 @@
 # BioMart API Examples
-# Ensembl BioMart bulk data retrieval — EU
+# Ensembl BioMart bulk data retrieval — live Ensembl data
 
 # Query BioMart with attributes and filters
 # biomart_query(dataset, attributes, filters) -> list of row lists
